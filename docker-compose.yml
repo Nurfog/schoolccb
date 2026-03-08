@@ -6,7 +6,7 @@ services:
   db:
     build:
       context: .
-      dockerfile: Dockerfile.postgres
+      dockerfile: postgres/Dockerfile.postgres
     container_name: colleges_db
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
@@ -32,12 +32,17 @@ services:
         reservations:
           cpus: '1'
           memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Servicio Backend en Rust
   backend:
     build:
       context: ./rust
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
     container_name: colleges_backend
     environment:
       RUST_LOG: info
@@ -59,12 +64,17 @@ services:
         reservations:
           cpus: '1'
           memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Servicio Frontend (compilado)
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: frontend/Dockerfile.frontend
     container_name: colleges_frontend
     depends_on:
       - backend
@@ -75,6 +85,11 @@ services:
         limits:
           cpus: '1'
           memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Servicio Proxy Inverso Nginx
   nginx:
@@ -95,6 +110,11 @@ services:
         limits:
           cpus: '1'
           memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:

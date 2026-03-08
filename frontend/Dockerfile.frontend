@@ -10,8 +10,8 @@ RUN npm run build
 
 # Etapa 2: Servidor Web (Nginx para servir los estáticos)
 FROM nginx:alpine
-# Copia los archivos construidos (dist) al directorio html de Nginx
-COPY --from=build /app/frontend/dist /usr/share/nginx/html
+# Copia los archivos construidos (build) al directorio html de Nginx
+COPY --from=build /app/frontend/build /usr/share/nginx/html
 # Configuración básica de Nginx para SPA (Single Page Application)
 RUN echo 'server { \
     listen 80; \
