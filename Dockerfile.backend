@@ -1,0 +1,30 @@
+# Etapa 1: Builder
+FROM rust:1.77-slim-bookworm as builder
+WORKDIR /app
+# Copia Cargo.toml y Cargo.lock desde el contexto actual (./rust)
+COPY Cargo.toml Cargo.lock ./
+# Crea un src/main.rs dummy para cachear las dependencias
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release --target x86_64-unknown-linux-gnu
+# Elimina el src/main.rs dummy
+RUN rm -rf src
+# Copia el código fuente real desde el contexto actual (./rust/src)
+COPY src ./src
+RUN cargo build --release --target x86_64-unknown-linux-gnu
+
+# Etapa 2: Runtime
+FROM debian:bookworm-slim
+WORKDIR /app
+# Instala dependencias mínimas del sistema para SSL y DB (libpq-dev para el cliente postgres)
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    ca-certificates \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+# Copia el binario compilado desde la etapa de builder
+COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/colegio-backend /app/colegio-backend
+
+# Expone el puerto que la aplicación Rust usará (según docker-compose.yml)
+EXPOSE 8080
+# Comando para ejecutar la aplicación cuando el contenedor inicie
+CMD ["./colegio-backend"]

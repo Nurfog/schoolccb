@@ -1,0 +1,110 @@
+# docker-compose.yml - Sistema de Administración de Colegios
+# Configuración optimizada con Rust, Node.js, Docker y PostgreSQL 18.3
+
+services:
+  # Servicio de Base de Datos - PostgreSQL 18.3 en Debian Trixie Slim
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    container_name: colleges_db
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123!}
+      POSTGRES_DB: ${DB_NAME:-colleges}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USERNAME:-postgres}"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+    networks:
+      - colleges_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Servicio Backend en Rust
+  backend:
+    build:
+      context: ./rust
+      dockerfile: Dockerfile.backend
+    container_name: colleges_backend
+    environment:
+      RUST_LOG: info
+      DATABASE_URL: postgres://${DB_USERNAME:-postgres}:${DB_PASSWORD:-changeme123!}@db:5432/${DB_NAME:-colleges}
+      PORT: ${BACKEND_PORT:-8080}
+      NODE_ENV: production
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - colleges_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # Servicio Frontend (compilado)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: colleges_frontend
+    depends_on:
+      - backend
+    networks:
+      - colleges_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # Servicio Proxy Inverso Nginx
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: colleges_nginx
+    ports:
+      - "80:80"
+      - "443:443" # Para HTTPS en producción
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - colleges_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+
+volumes:
+  postgres_data:
+    driver: local
+    name: colleges_postgres_data
+
+networks:
+  colleges_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1

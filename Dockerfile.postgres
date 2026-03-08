@@ -1,0 +1,2 @@
+FROM postgres:16-bullseye
+# No se necesitan comandos adicionales, los scripts de init-db se encargarán de la configuración.
