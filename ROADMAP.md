@@ -15,22 +15,23 @@ Este documento describe las fases de desarrollo planificadas para el Sistema de 
 - [x] Estructura de directorios organizada y limpia.
 
 ## 🚧 Fase 2: MVP (Producto Mínimo Viable) - Sistema Base (En Desarrollo)
-- [ ] **Autenticación y Autorización:**
+- [ ] **Arquitectura y Seguridad:**
+    - [ ] Implementar sistema de migraciones con `sqlx-cli`.
+    - [ ] Refactorizar backend a patrón Repository/Service.
+    - [ ] Hashing de contraseñas con Argon2id.
     - [ ] Login/Registro (JWT con Rust).
     - [ ] Gestión de Roles (Admin, Profesor, Alumno, Padre).
-    - [ ] Middleware de autenticación en Actix-web.
-- [ ] **Multi-tenancy:**
-    - [ ] Lógica para separar datos por colegio (Schema-based).
-    - [ ] Middleware de tenant en el backend.
+    - [ ] Middleware de autenticación y Tenant-isolation.
+- [ ] **Migración Frontend:**
+    - [ ] Migrar de Create React App a Vite (Rendimiento).
+    - [ ] Integrar Tailwind CSS para el sistema de diseño.
 - [ ] **Módulo Académico Básico:**
     - [ ] Gestión de Alumnos y Profesores (CRUD completo).
     - [ ] Cursos y Materias.
     - [ ] Calificaciones simples.
-    - [ ] API RESTful completa con SQLx.
 - [ ] **Interfaz de Usuario:**
-    - [ ] Dashboard básico para cada rol.
-    - [ ] Formularios CRUD con React.
-    - [ ] Navegación y routing.
+    - [ ] Dashboard administrativo con Tailwind.
+    - [ ] Formularios dinámicos y navegación SPA.
 
 ## 🎯 Metas por Milestone
 
@@ -101,7 +102,9 @@ Este documento describe las fases de desarrollo planificadas para el Sistema de 
 - **Herramientas:** GitHub Projects, Discord para comunicación
 - **Testing:** TDD con Rust, Testing Library con React
 - **Code Quality:** Clippy, ESLint, Prettier
-    - [ ] API preparada para futura App Móvil.
+    - [ ] Pipeline de CI/CD con GitHub Actions.
+- [ ] Automatización de SSL con Certbot/Nginx.
+- [ ] API preparada para futura App Móvil.
 
 ---
 

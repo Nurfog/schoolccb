@@ -6,11 +6,12 @@ Plataforma integral para la gestión escolar diseñada bajo un modelo **SaaS (So
 
 El proyecto utiliza una arquitectura moderna y de alto rendimiento:
 
-*   **Backend Principal:** Rust con Actix-web (Alto rendimiento, lógica de negocio core).
-*   **Frontend:** React con Create React App (SPA rápida y reactiva).
-*   **Base de Datos:** PostgreSQL 16 (Persistencia robusta).
+*   **Backend Principal:** Rust con Actix-web & SQLx (Alto rendimiento, migraciones versionadas).
+*   **Frontend:** React con Vite & Tailwind CSS (UI moderna y compilación ultrarrápida).
+*   **Base de Datos:** PostgreSQL 16 (Persistencia robusta y escalable).
+*   **Seguridad:** Autenticación JWT y Hashing Argon2.
 *   **Infraestructura:** Docker & Docker Compose (Orquestación de contenedores).
-*   **Proxy Reverso:** Nginx (Enrutamiento y balanceo de carga).
+*   **Proxy Reverso:** Nginx (Enrutamiento, balanceo y SSL).
 
 ## 🏗 Arquitectura
 
@@ -154,9 +155,10 @@ NODE_ENV=development
 
 ### Problemas Conocidos
 
-- **Edition 2024 Rust:** Si hay errores de compilación, cambiar a `edition = "2021"` en `rust/Cargo.toml`
-- **Base de datos vacía:** Implementar schema inicial en `init.sql` para Fase 2
-- **CORS:** Configurar en backend si hay problemas de conexión desde frontend
+- **Edition 2024 Rust:** Si hay errores de compilación, cambiar a `edition = "2021"` en `rust/Cargo.toml`.
+- **Migraciones:** Usar `sqlx-cli` para gestionar cambios en el esquema. No modificar `init.sql` una vez en producción.
+- **Frontend Legacy:** El proyecto está migrando de Create React App a Vite.
+- **CORS:** Configurar en backend si hay problemas de conexión desde el origen de desarrollo.
 
 ## 🤝 Contribución
 
