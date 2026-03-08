@@ -353,6 +353,70 @@ pub async fn get_active_period(
     }
 }
 
+// --- SaaS Enterprise Layer Handlers ---
+
+#[get("/saas/stats")]
+pub async fn get_saas_stats(
+    repo: web::Data<Repository>,
+    claims: Claims
+) -> HttpResponse {
+    // RBAC: Solo SuperAdmin (o admin con permiso saas:view_dashboard)
+    if claims.role != "admin" || !claims.permissions.contains(&"saas:view_dashboard".to_string()) {
+        return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    match repo.get_saas_stats().await {
+        Ok(stats) => HttpResponse::Ok().json(stats),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+#[get("/saas/licenses/expiring")]
+pub async fn list_expiring_licenses(
+    repo: web::Data<Repository>,
+    claims: Claims
+) -> HttpResponse {
+    if claims.role != "admin" || !claims.permissions.contains(&"saas:manage_licenses".to_string()) {
+        return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    match repo.list_expiring_licenses().await {
+        Ok(licenses) => HttpResponse::Ok().json(licenses),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+#[get("/saas/countries")]
+pub async fn list_countries(
+    repo: web::Data<Repository>,
+    _claims: Claims
+) -> HttpResponse {
+    match repo.list_countries().await {
+        Ok(countries) => HttpResponse::Ok().json(countries),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+#[post("/saas/schools")]
+pub async fn create_managed_school(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    body: web::Json<serde_json::Value>
+) -> HttpResponse {
+    if claims.role != "admin" || !claims.permissions.contains(&"saas:manage_schools".to_string()) {
+        return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    let name = body["name"].as_str().unwrap_or_default();
+    let subdomain = body["subdomain"].as_str().unwrap_or_default();
+    let country_id = body["country_id"].as_i64().map(|id| id as i32);
+
+    match repo.create_school(name, subdomain, country_id).await {
+        Ok(school) => HttpResponse::Ok().json(school),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
 // --- System Handlers ---
 
 #[get("/health")]

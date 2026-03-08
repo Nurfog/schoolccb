@@ -56,6 +56,10 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::record_attendance)
             .service(handlers::get_my_report_card)
             .service(handlers::get_active_period)
+            .service(handlers::get_saas_stats)
+            .service(handlers::list_expiring_licenses)
+            .service(handlers::list_countries)
+            .service(handlers::create_managed_school)
     })
     .bind(&bind_addr)?
     .run()

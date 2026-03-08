@@ -30,7 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Starting bootstrap process...");
 
     // 1. Create School
-    let school = repo.create_school(school_name, "Colegio Principal").await?;
+    let subdomain = school_name.to_lowercase().replace(" ", "-");
+    let school = repo.create_school(school_name, &subdomain, None).await?;
     println!("✅ School created: {} (ID: {})", school.name, school.id);
 
     // 2. Hash Password

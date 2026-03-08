@@ -8,6 +8,8 @@ pub struct School {
     pub id: Uuid,
     pub name: String,
     pub subdomain: String,
+    pub country_id: Option<i32>,
+    pub is_system_admin: bool,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -118,4 +120,29 @@ pub struct ReportCardItem {
     pub course_name: String,
     pub average_grade: rust_decimal::Decimal,
     pub attendance_percentage: rust_decimal::Decimal,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct Country {
+    pub id: i32,
+    pub name: String,
+    pub code: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct SaasLicense {
+    pub id: Uuid,
+    pub school_id: Uuid,
+    pub plan_type: String,
+    pub status: String,
+    pub expiry_date: DateTime<Utc>,
+    pub auto_renew: bool,
+    pub card_last4: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SaasDashboardStats {
+    pub total_schools: i64,
+    pub active_licenses: i64,
+    pub expiring_licenses: i64,
 }

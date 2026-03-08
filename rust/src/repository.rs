@@ -74,18 +74,57 @@ impl Repository {
             .await
     }
 
-    pub async fn create_school(&self, name: &str, subdomain: &str) -> Result<School, sqlx::Error> {
+    pub async fn create_school(&self, name: &str, subdomain: &str, country_id: Option<i32>) -> Result<School, sqlx::Error> {
         sqlx::query_as::<_, School>(
-            "INSERT INTO schools (name, subdomain) VALUES ($1, $2) RETURNING *"
+            "INSERT INTO schools (name, subdomain, country_id) VALUES ($1, $2, $3) RETURNING *"
         )
         .bind(name)
         .bind(subdomain)
+        .bind(country_id)
         .fetch_one(&self.pool)
         .await
     }
 
     pub async fn get_all_schools(&self) -> Result<Vec<School>, sqlx::Error> {
         sqlx::query_as::<_, School>("SELECT * FROM schools")
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    // --- SaaS Enterprise Layer ---
+
+    pub async fn get_saas_stats(&self) -> Result<crate::models::SaasDashboardStats, sqlx::Error> {
+        let total_schools = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM schools")
+            .fetch_one(&self.pool)
+            .await?;
+        
+        let active_licenses = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM saas_licenses WHERE status = 'active'")
+            .fetch_one(&self.pool)
+            .await?;
+
+        let expiring_licenses = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM saas_licenses WHERE expiry_date < (CURRENT_TIMESTAMP + INTERVAL '30 days') AND status = 'active'"
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(crate::models::SaasDashboardStats {
+            total_schools,
+            active_licenses,
+            expiring_licenses,
+        })
+    }
+
+    pub async fn list_expiring_licenses(&self) -> Result<Vec<crate::models::SaasLicense>, sqlx::Error> {
+        sqlx::query_as::<_, crate::models::SaasLicense>(
+            "SELECT * FROM saas_licenses WHERE expiry_date < (CURRENT_TIMESTAMP + INTERVAL '30 days') ORDER BY expiry_date ASC"
+        )
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    pub async fn list_countries(&self) -> Result<Vec<crate::models::Country>, sqlx::Error> {
+        sqlx::query_as::<_, crate::models::Country>("SELECT * FROM countries ORDER BY name ASC")
             .fetch_all(&self.pool)
             .await
     }
