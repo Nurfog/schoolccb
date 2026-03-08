@@ -168,4 +168,4 @@ NODE_ENV=development
 
 ## 📝 Licencia
 
-Todos los derechos reservados. Este proyecto es propiedad exclusiva y no puede ser copiado, distribuido o utilizado sin autorización expresa por escrito.
+Todos los derechos reservados. Ver el archivo [LICENSE](LICENSE) para más detalles.
