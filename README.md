@@ -108,8 +108,9 @@ NODE_ENV=production
 - ✅ **Seguridad Senior:** Hashing Argon2id, JWT con Claims de permisos y RBAC verificado.
 - ✅ **Arquitectura Modular:** Patrón Repository con separación clara de modelos, handlers y lógica de acceso.
 - ✅ **Gestión Académica Profesional:** Periodos académicos, Asistencia y Calificaciones.
-- ✅ **Boletín Estudiantil:** Reporte centralizado de rendimiento y asistencia por estudiante.
-- 🚧 **Próximo:** Sistema de Calificaciones (Grades) y Periodos Académicos.
+- ✅ **Capa Enterprise SaaS:** Gestión multi-colegio, licencias por suscripción y geo-tagging por país.
+- ✅ **Dashboard SuperAdmin:** Estadísticas globales de salud del sistema y vencimientos de licencias.
+- 🚧 **Próximo:** Carga masiva de usuarios (CSV/Excel) y soporte Multi-idioma completo.
 
 ## ⚙️ Instalación Rápida (Recomendado)
 

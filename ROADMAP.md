@@ -32,6 +32,11 @@ Este documento describe las fases de desarrollo planificadas para el Sistema de 
 - [x] **Gestión Escolar:**
     - [x] Horarios y periodos académicos (Semestres/Bimestres).
     - [x] Asistencia diaria.
+- [ ] **SaaS Enterprise (Fase 11):**
+    - [x] Dashboard de métricas globales para SuperAdmin.
+    - [x] Gestión de licencias y países.
+    - [ ] Importación masiva de usuarios (Excel/CSV).
+    - [ ] Soporte Multi-idioma (i18n).
 - [ ] **Perfil y Configuración:**
     - [ ] Panel de ajustes de cuenta para el usuario.
     - [ ] Gestión de datos del colegio (logo, dirección).
