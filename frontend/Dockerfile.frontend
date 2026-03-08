@@ -1,5 +1,5 @@
 # Etapa 1: Construcción
-FROM node:20-alpine as build
+FROM node:22-alpine as build
 WORKDIR /app/frontend
 # Copia package.json y package-lock.json desde el directorio frontend
 COPY frontend/package.json frontend/package-lock.json ./

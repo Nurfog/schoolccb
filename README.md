@@ -101,36 +101,62 @@ RUST_LOG=info
 NODE_ENV=production
 ```
 
+## � Estado Actual
+
+- ✅ **Infraestructura completa:** Docker Compose funcionando con 4 servicios
+- ✅ **Backend Rust:** API básica con Actix-web y endpoints `/health`, `/`
+- ✅ **Frontend React:** Aplicación básica compilada con Nginx
+- ✅ **Base de datos:** PostgreSQL configurado y accesible
+- ✅ **Proxy reverso:** Nginx enrutando correctamente
+- ⚠️ **Pendiente:** Schema inicial de BD (init.sql vacío)
+- ⚠️ **Atención:** Edition 2024 de Rust puede causar incompatibilidades
+
 ## 🚀 Comandos Útiles
 
 ```bash
-# Construir y levantar todos los servicios
+# Desarrollo completo
 docker compose up --build
 
-# Levantar en segundo plano
-docker compose up -d --build
+# Solo un servicio
+docker compose up backend --build
 
-# Ver logs de todos los servicios
-docker compose logs -f
+# Ver logs en tiempo real
+docker compose logs -f backend
+docker compose logs -f frontend
 
-# Detener servicios
-docker compose down
-
-# Reconstruir un servicio específico
-docker compose up --build backend
-
-# Acceder a la base de datos
+# Acceder a servicios
+docker compose exec backend bash
 docker compose exec db psql -U postgres -d colleges
+
+# Detener todo
+docker compose down
 ```
 
-## 📊 Estado Actual
+## 🔧 Configuración
 
-- ✅ Infraestructura Docker completa
-- ✅ Backend Rust básico con endpoints de salud
-- ✅ Frontend React básico con interfaz de bienvenida
-- ✅ Proxy reverso Nginx configurado
-- ✅ Base de datos PostgreSQL lista
-- ✅ Docker Compose funcionando correctamente
+### Variables de Entorno
+
+Crea un archivo `.env` en la raíz del proyecto:
+
+```env
+# Base de Datos
+DB_USERNAME=postgres
+DB_PASSWORD=changeme123!
+DB_NAME=colleges
+
+# Backend
+BACKEND_PORT=8080
+RUST_LOG=info
+
+# Frontend
+NODE_ENV=development
+```
+
+### Problemas Conocidos
+
+- **Edition 2024 Rust:** Si hay errores de compilación, cambiar a `edition = "2021"` en `rust/Cargo.toml`
+- **Base de datos vacía:** Implementar schema inicial en `init.sql` para Fase 2
+- **CORS:** Configurar en backend si hay problemas de conexión desde frontend
 
 ## 🤝 Contribución
 
@@ -142,40 +168,4 @@ docker compose exec db psql -U postgres -d colleges
 
 ## 📝 Licencia
 
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 📂 Estructura del Proyecto
-
-```
-/schoolccb
-├── Dockerfile.postgres     # Dockerfile para la base de datos PostgreSQL
-├── Dockerfile.frontend     # Dockerfile para el frontend de React
-├── rust/                   # Código fuente del Backend en Rust
-│   └── Dockerfile.backend  # Dockerfile para el backend de Rust
-├── nginx/                  # Configuración del proxy inverso Nginx
-│   ├── Dockerfile
-│   └── nginx.conf
-├── scripts/                # Scripts de inicialización de DB y utilidades
-├── docker-compose.yml
-```
-
-## 🔐 Modelo de Negocio (SaaS)
-
-El sistema está diseñado para soportar **Multi-tenancy** (múltiples colegios en una sola instancia) con aislamiento lógico de datos.
-
-*   **Planes:** Mensual y Anual.
-*   **Módulos:**
-    *   *Base:* Gestión académica, matriculación.
-    *   *Premium:* Finanzas, Comunicaciones avanzadas (contenedores/servicios adicionales).
-
-## 🤝 Contribución
-
-1.  Haz un Fork del proyecto.
-2.  Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`).
-3.  Haz Commit de tus cambios (`git commit -m 'Add some AmazingFeature'`).
-4.  Haz Push a la rama (`git push origin feature/AmazingFeature`).
-5.  Abre un Pull Request.
-
-## 📄 Licencia
-
-Distribuido bajo la licencia [Nombre de tu Licencia]. Ver `LICENSE` para más información.
+Todos los derechos reservados. Este proyecto es propiedad exclusiva y no puede ser copiado, distribuido o utilizado sin autorización expresa por escrito.

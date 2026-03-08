@@ -32,52 +32,40 @@ Este documento describe las fases de desarrollo planificadas para el Sistema de 
     - [ ] Formularios CRUD con React.
     - [ ] Navegación y routing.
 
-## 📅 Fase 3: Módulos Premium y Expansión (Q2 2026)
-- [ ] **Módulo de Finanzas (Premium):**
-    - [ ] Gestión de pensiones y matrículas.
-    - [ ] Facturación electrónica.
-    - [ ] Reportes de morosidad.
-    - [ ] Integración con APIs de pago.
-- [ ] **Módulo de Comunicaciones (Premium):**
-    - [ ] Chat interno / Notificaciones.
-    - [ ] Envío de correos masivos.
-    - [ ] Sistema de anuncios.
-- [ ] **Módulo de Asistencia:**
-    - [ ] Registro diario y reportes.
-    - [ ] Integración con dispositivos biométricos.
-- [ ] **Reportes y Analytics:**
-    - [ ] Dashboards con métricas.
-    - [ ] Exportación a PDF/Excel.
+## 🎯 Metas por Milestone
 
-## 💰 Fase 4: Funcionalidades Comerciales SaaS (Q3 2026)
-- [ ] **Gestión de Suscripciones:**
-    - [ ] Integración con pasarela de pagos (Stripe/MercadoPago).
-    - [ ] Automatización de cobros (Mensual/Anual).
-    - [ ] Bloqueo automático por falta de pago.
-- [ ] **Panel de Super-Admin:**
-    - [ ] Métricas globales del SaaS (MRR, Churn).
-    - [ ] Alta/Baja de colegios clientes.
-    - [ ] Gestión de planes de suscripción.
-- [ ] **Multi-idioma y Localización:**
-    - [ ] Soporte para español e inglés.
-    - [ ] Configuración regional.
+### Milestone 1 (Marzo 2026) ✅
+- Infraestructura completa funcionando
+- "Hola Mundo" end-to-end
+- Documentación inicial
 
-## 🚀 Fase 5: Optimización y Escala (Q4 2026)
-- [ ] **Performance:**
-    - [ ] Implementación de Caching (Redis).
-    - [ ] Optimización de queries en Rust/SQLx.
-    - [ ] CDN para assets estáticos.
-- [ ] **DevOps:**
-    - [ ] CI/CD Pipelines (GitHub Actions).
-    - [ ] Tests automatizados (Unitarios y de Integración).
-    - [ ] Monitoreo avanzado (Prometheus/Grafana).
-- [ ] **Mobile:**
-    - [ ] Aplicación React Native.
-    - [ ] API optimizada para mobile.
-- [ ] **Seguridad:**
-    - [ ] Auditorías de seguridad.
-    - [ ] Cumplimiento GDPR.
-    - [ ] Encriptación de datos sensibles.
+### Milestone 2 (Junio 2026)
+- MVP funcional con autenticación
+- Gestión básica de usuarios
+- Primer colegio piloto
+
+### Milestone 3 (Septiembre 2026)
+- Módulos premium implementados
+- Sistema de pagos integrado
+- 5+ colegios en producción
+
+### Milestone 4 (Diciembre 2026)
+- Optimización completa
+- Aplicación móvil
+- 20+ colegios clientes
+
+## 📊 KPIs de Éxito
+
+- **Técnicos:** 99.9% uptime, <500ms response time
+- **Negocio:** 50 colegios clientes, MRR objetivo alcanzado
+- **Usuario:** Satisfacción >4.5/5, retención >90%
+
+## 🔄 Proceso de Desarrollo
+
+- **Metodología:** Scrum con sprints de 2 semanas
+- **Herramientas:** GitHub Projects, Discord para comunicación
+- **Testing:** TDD con Rust, Testing Library con React
+- **Code Quality:** Clippy, ESLint, Prettier
 
 ## 🎯 Metas por Milestone
 
