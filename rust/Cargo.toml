@@ -13,7 +13,8 @@ serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 postgres = "0.19"
 r2d2 = "0.8"
-sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono", "rust_decimal"] }
+rust_decimal = { version = "1", features = ["serde-float"] }
 reqwest = { version = "0.12", features = ["json"] }
 dotenvy = "0.15"
 thiserror = "2.0"
@@ -23,6 +24,8 @@ uuid = { version = "1.11", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 env_logger = "0.11"
 log = "0.4"
+argon2 = "0.5"
+jsonwebtoken = "9"
 
 [dev-dependencies]
 actix-rt = "2"

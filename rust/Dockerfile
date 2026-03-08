@@ -16,6 +16,7 @@ RUN rm -rf src && \
     rm -rf target/release/deps/colegio_backend*
 
 COPY src ./src
+COPY migrations ./migrations
 
 # Compila el código real
 RUN cargo build --release
@@ -30,8 +31,9 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copia el binario compilado
+# Copia los binarios compilados
 COPY --from=builder /app/backend/target/release/colegio-backend /app/colegio-backend
+COPY --from=builder /app/backend/target/release/bootstrap /app/bootstrap
 
 # Expone el puerto
 EXPOSE 8080

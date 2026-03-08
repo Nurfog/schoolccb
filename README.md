@@ -6,10 +6,10 @@ Plataforma integral para la gestión escolar diseñada bajo un modelo **SaaS (So
 
 El proyecto utiliza una arquitectura moderna y de alto rendimiento:
 
-*   **Backend Principal:** Rust con Actix-web & SQLx (Alto rendimiento, migraciones versionadas).
-*   **Frontend:** React con Vite & Tailwind CSS (UI moderna y compilación ultrarrápida).
-*   **Base de Datos:** PostgreSQL 16 (Persistencia robusta y escalable).
-*   **Seguridad:** Autenticación JWT y Hashing Argon2.
+*   **Backend Principal:** Rust con Actix-web & SQLx (Patrón Repository, RBAC).
+*   **Frontend:** React con Vite & Tailwind CSS (UI moderna, Dashboard administrativo).
+*   **Base de Datos:** PostgreSQL 16 (Esquema académico versionado).
+*   **Seguridad:** Autenticación JWT, Hashing Argon2id y Claims-based RBAC.
 *   **Infraestructura:** Docker & Docker Compose (Orquestación de contenedores).
 *   **Proxy Reverso:** Nginx (Enrutamiento, balanceo y SSL).
 
@@ -104,34 +104,28 @@ NODE_ENV=production
 
 ## � Estado Actual
 
-- ✅ **Infraestructura completa:** Docker Compose funcionando con 4 servicios
-- ✅ **Backend Rust:** API básica con Actix-web y endpoints `/health`, `/`
-- ✅ **Frontend React:** Aplicación básica compilada con Nginx
-- ✅ **Base de datos:** PostgreSQL configurado y accesible
-- ✅ **Proxy reverso:** Nginx enrutando correctamente
-- ⚠️ **Pendiente:** Schema inicial de BD (init.sql vacío)
-- ⚠️ **Atención:** Edition 2024 de Rust puede causar incompatibilidades
+- ✅ **Infraestructura completa:** Docker Compose con PostgreSQL, Backend (Rust), Frontend (Vite) y Nginx.
+- ✅ **Seguridad Senior:** Hashing Argon2id, JWT con Claims de permisos y RBAC verificado.
+- ✅ **Arquitectura Modular:** Patrón Repository con separación clara de modelos, handlers y lógica de acceso.
+- ✅ **Gestión Académica Profesional:** Periodos académicos, Asistencia y Calificaciones.
+- ✅ **Boletín Estudiantil:** Reporte centralizado de rendimiento y asistencia por estudiante.
+- 🚧 **Próximo:** Sistema de Calificaciones (Grades) y Periodos Académicos.
+
+## ⚙️ Instalación Rápida (Recomendado)
+
+He creado un script interactivo para automatizar la configuración inicial:
+
+1. Clona el repositorio.
+2. Asegúrate de que Docker esté corriendo.
+3. Ejecuta el setup:
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+4. El script te pedirá el nombre de tu colegio y los datos de tu primer usuario SuperAdmin.
+5. ¡Listo! Accede a `http://localhost` para empezar.
 
 ## 🚀 Comandos Útiles
-
-```bash
-# Desarrollo completo
-docker compose up --build
-
-# Solo un servicio
-docker compose up backend --build
-
-# Ver logs en tiempo real
-docker compose logs -f backend
-docker compose logs -f frontend
-
-# Acceder a servicios
-docker compose exec backend bash
-docker compose exec db psql -U postgres -d colleges
-
-# Detener todo
-docker compose down
-```
 
 ## 🔧 Configuración
 

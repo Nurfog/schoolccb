@@ -14,24 +14,30 @@ Este documento describe las fases de desarrollo planificadas para el Sistema de 
 - [x] Docker Compose funcionando correctamente.
 - [x] Estructura de directorios organizada y limpia.
 
-## 🚧 Fase 2: MVP (Producto Mínimo Viable) - Sistema Base (En Desarrollo)
-- [ ] **Arquitectura y Seguridad:**
-    - [ ] Implementar sistema de migraciones con `sqlx-cli`.
-    - [ ] Refactorizar backend a patrón Repository/Service.
-    - [ ] Hashing de contraseñas con Argon2id.
-    - [ ] Login/Registro (JWT con Rust).
-    - [ ] Gestión de Roles (Admin, Profesor, Alumno, Padre).
-    - [ ] Middleware de autenticación y Tenant-isolation.
-- [ ] **Migración Frontend:**
-    - [ ] Migrar de Create React App a Vite (Rendimiento).
-    - [ ] Integrar Tailwind CSS para el sistema de diseño.
-- [ ] **Módulo Académico Básico:**
-    - [ ] Gestión de Alumnos y Profesores (CRUD completo).
-    - [ ] Cursos y Materias.
-    - [ ] Calificaciones simples.
-- [ ] **Interfaz de Usuario:**
-    - [ ] Dashboard administrativo con Tailwind.
-    - [ ] Formularios dinámicos y navegación SPA.
+- [x] **Módulo Académico Básico (Core):**
+    - [x] Definición de esquemas para Alumnos, Profesores y Cursos.
+    - [x] Endpoints base para gestión académica.
+    - [x] Creación de recursos (Cursos, Profesores, Alumnos) desde la UI.
+    - [x] **Módulo de Matriculación:** Inscripción de alumnos en cursos (Backend & UI).
+
+## ✅ Fase 3: Producto Operativo (Completada - Marzo 2026)
+- [x] Integración completa Frontend -> Backend con Auth.
+- [x] Gestión atomática de usuarios y perfiles académicos.
+- [x] Sistema de matriculación funcional.
+
+## 🚧 Fase 4: Funcionalidades Académicas Avanzadas (En Progreso)
+- [x] **Sistema de Calificaciones:**
+    - [x] Registro de notas por parte de profesores.
+    - [ ] Vista de boletines para alumnos y padres.
+- [x] **Gestión Escolar:**
+    - [x] Horarios y periodos académicos (Semestres/Bimestres).
+    - [x] Asistencia diaria.
+- [ ] **Perfil y Configuración:**
+    - [ ] Panel de ajustes de cuenta para el usuario.
+    - [ ] Gestión de datos del colegio (logo, dirección).
+- [ ] **Infraestructura Avanzada:**
+    - [ ] Pipeline de CI/CD con GitHub Actions.
+    - [ ] Automatización de SSL con Certbot/Nginx.
 
 ## 🎯 Metas por Milestone
 

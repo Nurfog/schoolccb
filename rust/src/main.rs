@@ -1,43 +1,12 @@
-use actix_web::{web, App, HttpResponse, HttpServer, get};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
 use std::env;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
 use dotenvy::dotenv;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HealthResponse {
-    status: String,
-    message: String,
-    db_connected: Option<bool>,
-}
-
-#[get("/health")]
-async fn health(db_pool: web::Data<Pool<Postgres>>) -> HttpResponse {
-    let db_status = sqlx::query("SELECT 1")
-        .execute(db_pool.get_ref())
-        .await;
-
-    let (message, db_connected) = match db_status {
-        Ok(_) => ("Server is running and DB is connected".to_string(), true),
-        Err(e) => (format!("Server is running but DB error: {}", e), false),
-    };
-
-    HttpResponse::Ok().json(HealthResponse {
-        status: if db_connected { "ok".to_string() } else { "warning".to_string() },
-        message,
-        db_connected: Some(db_connected),
-    })
-}
-
-#[get("/")]
-async fn index() -> HttpResponse {
-    HttpResponse::Ok().json(HealthResponse {
-        status: "ok".to_string(),
-        message: "Colegio Backend API v1.0".to_string(),
-        db_connected: None,
-    })
-}
+use colegio_backend::repository::Repository;
+use colegio_backend::handlers;
+use colegio_backend::HealthResponse;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -51,6 +20,15 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to create pool");
 
+    // Ejecutar migraciones automáticamente
+    println!("Running database migrations...");
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .map_err(|e: sqlx::migrate::MigrateError| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+
+    let repo = Repository::new(pool.clone());
+
     let port = env::var("PORT").or_else(|_| env::var("RUST_API_PORT")).unwrap_or_else(|_| "8080".to_string());
     let bind_addr = format!("0.0.0.0:{}", port);
 
@@ -59,8 +37,25 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
-            .service(index)
-            .service(health)
+            .app_data(web::Data::new(repo.clone()))
+            .service(handlers::index)
+            .service(handlers::health)
+            .service(handlers::login)
+            .service(handlers::register)
+            .service(handlers::get_me)
+            .service(handlers::list_courses)
+            .service(handlers::create_course)
+            .service(handlers::list_teachers)
+            .service(handlers::create_teacher)
+            .service(handlers::list_students)
+            .service(handlers::create_student)
+            .service(handlers::enroll_student)
+            .service(handlers::list_course_students)
+            .service(handlers::add_grade)
+            .service(handlers::list_course_grades)
+            .service(handlers::record_attendance)
+            .service(handlers::get_my_report_card)
+            .service(handlers::get_active_period)
     })
     .bind(&bind_addr)?
     .run()
