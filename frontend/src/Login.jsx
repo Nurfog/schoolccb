@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from './api';
 
 function Login({ onLogin }) {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -16,6 +18,7 @@ function Login({ onLogin }) {
             const data = await api.post('/auth/login', { email, password });
             api.saveToken(data.token);
             api.saveUser(data.user);
+            api.saveSchool(data.school);
             onLogin(data.user);
         } catch (err) {
             setError(err.message);
@@ -32,7 +35,7 @@ function Login({ onLogin }) {
                         <span className="text-3xl font-black text-indigo-950">C</span>
                     </div>
                     <h1 className="text-4xl font-black tracking-tighter mb-2">Colegio<span className="text-cyan-400">CCB</span></h1>
-                    <p className="text-blue-100/50 font-medium">Bienvenido al sistema de administración</p>
+                    <p className="text-blue-100/50 font-medium">{t('login.title')}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[2.5rem] shadow-2xl space-y-6">
@@ -43,7 +46,7 @@ function Login({ onLogin }) {
                     )}
 
                     <div className="space-y-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-blue-100/60 ml-2">Email Institucional</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-blue-100/60 ml-2">{t('login.email')}</label>
                         <input
                             type="email"
                             required
@@ -55,7 +58,7 @@ function Login({ onLogin }) {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-blue-100/60 ml-2">Contraseña</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-blue-100/60 ml-2">{t('login.password')}</label>
                         <input
                             type="password"
                             required
@@ -71,12 +74,12 @@ function Login({ onLogin }) {
                         disabled={loading}
                         className={`w-full bg-cyan-500 text-indigo-950 font-black py-4 rounded-2xl shadow-xl shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-widest ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {loading ? 'Iniciando Sesión...' : 'Entrar al Panel'}
+                        {loading ? t('buttons.entering') : t('buttons.enter')}
                     </button>
                 </form>
 
                 <p className="text-center mt-8 text-blue-100/30 text-xs font-medium">
-                    ¿Olvidaste tu contraseña? Contacta a soporte técnico.
+                    {t('login.forgot')}
                 </p>
             </div>
         </div>

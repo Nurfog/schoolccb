@@ -1,12 +1,11 @@
-use actix_web::{web, App, HttpResponse, HttpServer};
-use serde::{Deserialize, Serialize};
+use actix_web::{web, App, HttpServer};
 use std::env;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{Pool, Postgres};
 use dotenvy::dotenv;
 use colegio_backend::repository::Repository;
 use colegio_backend::handlers;
-use colegio_backend::HealthResponse;
+use actix_cors::Cors;
+use actix_web::http::header;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -25,7 +24,7 @@ async fn main() -> std::io::Result<()> {
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
-        .map_err(|e: sqlx::migrate::MigrateError| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        .map_err(|e: sqlx::migrate::MigrateError| std::io::Error::other(e.to_string()))?;
 
     let repo = Repository::new(pool.clone());
 
@@ -34,8 +33,22 @@ async fn main() -> std::io::Result<()> {
 
     println!("Starting server on {}", bind_addr);
 
+    let origins = env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost".to_string());
+    let allowed_origins: Vec<String> = origins.split(',').map(|s| s.to_string()).collect();
+
     HttpServer::new(move || {
+        let mut cors = Cors::default()
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
+            .supports_credentials()
+            .max_age(3600);
+
+        for origin in &allowed_origins {
+            cors = cors.allowed_origin(origin);
+        }
+
         App::new()
+            .wrap(cors)
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(repo.clone()))
             .service(handlers::index)
@@ -59,7 +72,15 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::get_saas_stats)
             .service(handlers::list_expiring_licenses)
             .service(handlers::list_countries)
+            .service(handlers::list_managed_schools)
             .service(handlers::create_managed_school)
+            .service(handlers::get_root_dashboard)
+            .service(handlers::list_all_licenses)
+            .service(handlers::list_schools_stats)
+            .service(handlers::get_school)
+            .service(handlers::update_school)
+            .service(handlers::bulk_import)
+            .service(handlers::update_branding)
     })
     .bind(&bind_addr)?
     .run()

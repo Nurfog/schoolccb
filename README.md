@@ -102,15 +102,22 @@ RUST_LOG=info
 NODE_ENV=production
 ```
 
-## � Estado Actual
+## 📊 Estado Actual
 
-- ✅ **Infraestructura completa:** Docker Compose con PostgreSQL, Backend (Rust), Frontend (Vite) y Nginx.
-- ✅ **Seguridad Senior:** Hashing Argon2id, JWT con Claims de permisos y RBAC verificado.
-- ✅ **Arquitectura Modular:** Patrón Repository con separación clara de modelos, handlers y lógica de acceso.
-- ✅ **Gestión Académica Profesional:** Periodos académicos, Asistencia y Calificaciones.
-- ✅ **Capa Enterprise SaaS:** Gestión multi-colegio, licencias por suscripción y geo-tagging por país.
-- ✅ **Dashboard SuperAdmin:** Estadísticas globales de salud del sistema y vencimientos de licencias.
-- 🚧 **Próximo:** Carga masiva de usuarios (CSV/Excel) y soporte Multi-idioma completo.
+| Módulo | Estado | Descripción |
+|--------|--------|-------------|
+| Infraestructura | ✅ Completo | Docker, Nginx, PostgreSQL, Rust Actix-web, React/Vite |
+| Autenticación y RBAC | ✅ Completo | JWT, Argon2id, permisos por rol |
+| Gestión Académica | ✅ Completo | Cursos, matrículas, calificaciones y asistencia |
+| SaaS Multi-colegio | ✅ Completo | Multi-tenancy, subdominios, geo-tagging por país |
+| Consola Root | ✅ Completo | Dashboard MRR, gestión de licencias, detalle por institución |
+| Importación Masiva CSV | ✅ Completo | `POST /admin/bulk-import` — crea estudiantes y profesores en masa |
+| Boletín Estudiantil | ✅ Completo | `GET /academic/my-report-card` — promedios ponderados y % asistencia |
+| Personalización | ✅ Completo | Logo, colores primario/secundario por colegio (marca blanca) |
+| Internacionalización | ✅ Completo | ES/EN con `react-i18next`, persistencia en `localStorage` |
+| CI/CD | ✅ Completo | Pipeline GitHub Actions: lint, build, test y Docker push |
+| SSL / HTTPS | ✅ Completo | Automatización con Certbot y Nginx (init-ssl.sh) |
+| App Móvil (API) | 🚧 En Progreso | Preparación de endpoints y optimización para mobile |
 
 ## ⚙️ Instalación Rápida (Recomendado)
 

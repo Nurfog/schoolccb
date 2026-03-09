@@ -9,11 +9,14 @@ const api = {
 
     saveToken: (token) => localStorage.setItem('token', token),
     saveUser: (user) => localStorage.setItem('user', JSON.stringify(user)),
+    saveSchool: (school) => localStorage.setItem('school', JSON.stringify(school)),
     getToken: () => localStorage.getItem('token'),
     getUser: () => JSON.parse(localStorage.getItem('user')),
+    getSchool: () => JSON.parse(localStorage.getItem('school')),
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('school');
     }
 };
 

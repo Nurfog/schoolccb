@@ -14,6 +14,7 @@ use uuid::Uuid;
 pub struct Claims {
     pub sub: String, // user_id
     pub school_id: String,
+    pub is_system_admin: bool,
     pub role: String,
     pub permissions: Vec<String>,
     pub exp: usize,
@@ -38,6 +39,7 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 pub fn create_jwt(
     user_id: Uuid,
     school_id: Uuid,
+    is_system_admin: bool,
     role: &str,
     permissions: Vec<String>,
 ) -> Result<String, jsonwebtoken::errors::Error> {
@@ -49,6 +51,7 @@ pub fn create_jwt(
     let claims = Claims {
         sub: user_id.to_string(),
         school_id: school_id.to_string(),
+        is_system_admin,
         role: role.to_string(),
         permissions,
         exp: expiration as usize,
@@ -79,15 +82,13 @@ impl FromRequest for Claims {
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let auth_header = req.headers().get("Authorization");
 
-        if let Some(auth_str) = auth_header.and_then(|h| h.to_str().ok()) {
-            if auth_str.starts_with("Bearer ") {
-                let token = &auth_str[7..];
-                match decode_jwt(token) {
-                    Ok(claims) => return ready(Ok(claims)),
-                    Err(_) => {
-                        return ready(Err(actix_web::error::ErrorUnauthorized("Invalid token")))
-                    }
-                }
+        if let Some(token) = auth_header
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "))
+        {
+            match decode_jwt(token) {
+                Ok(claims) => return ready(Ok(claims)),
+                Err(_) => return ready(Err(actix_web::error::ErrorUnauthorized("Invalid token"))),
             }
         }
 

@@ -1,13 +1,16 @@
-use actix_web::{web, HttpResponse, get, post};
+use actix_web::{web, HttpResponse, get, post, put};
+use actix_multipart::Multipart;
+use futures::TryStreamExt;
 use sqlx::{Pool, Postgres};
 use crate::repository::Repository;
 use crate::HealthResponse;
-use crate::auth::{verify_password, create_jwt, Claims};
-use crate::models::{User, Course};
-use serde::{Deserialize, Serialize};
+use crate::auth::{verify_password, hash_password, create_jwt, Claims};
+use crate::models::User;
+use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
-use tracing::debug;
+use tracing::{debug, error};
+use std::io::Cursor;
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -50,27 +53,46 @@ pub struct CreateStudentRequest {
     pub parent_id: Option<Uuid>,
 }
 
+#[derive(Deserialize)]
+pub struct UpdateSchoolRequest {
+    pub name: String,
+    pub subdomain: String,
+    pub country_id: Option<i32>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateBrandingRequest {
+    pub logo_url: Option<String>,
+    pub primary_color: Option<String>,
+    pub secondary_color: Option<String>,
+}
+
 #[post("/auth/login")]
 pub async fn login(repo: web::Data<Repository>, body: web::Json<LoginRequest>) -> HttpResponse {
     let user_role = repo.get_user_with_role(&body.email).await;
 
     match user_role {
-        Ok(Some((user, role_name))) => {
+        Ok(Some((user, role_name, is_system_admin))) => {
             if verify_password(&body.password, &user.password_hash) {
                 let school_id = user.school_id.unwrap_or_default();
                 
                 // Fetch permissions
                 let permissions = repo.get_user_permissions(user.id).await.unwrap_or_default();
                 
-                match create_jwt(user.id, school_id, &role_name, permissions) {
+                // Fetch school branding
+                let school = repo.get_school_by_id(school_id).await.ok().flatten();
+                
+                match create_jwt(user.id, school_id, is_system_admin, &role_name, permissions) {
                     Ok(token) => HttpResponse::Ok().json(json!({
                         "token": token,
                         "user": {
                             "id": user.id,
                             "name": user.name,
                             "email": user.email,
-                            "role": role_name
-                        }
+                            "role": role_name,
+                            "is_system_admin": is_system_admin
+                        },
+                        "school": school
                     })),
                     Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Failed to create token"})),
                 }
@@ -105,10 +127,11 @@ pub async fn register(repo: web::Data<Repository>, body: web::Json<RegisterReque
 }
 
 #[get("/auth/me")]
-pub async fn get_me(claims: Claims) -> HttpResponse {
+pub async fn get_me(_repo: web::Data<Repository>, claims: Claims) -> HttpResponse {
     HttpResponse::Ok().json(json!({
-        "user_id": claims.sub,
+        "id": claims.sub,
         "school_id": claims.school_id,
+        "is_system_admin": claims.is_system_admin,
         "role": claims.role,
         "permissions": claims.permissions
     }))
@@ -386,6 +409,21 @@ pub async fn list_expiring_licenses(
     }
 }
 
+#[get("/saas/schools")]
+pub async fn list_managed_schools(
+    repo: web::Data<Repository>,
+    claims: Claims
+) -> HttpResponse {
+    if claims.role != "admin" || !claims.permissions.contains(&"saas:manage_schools".to_string()) {
+        return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    match repo.get_all_schools().await {
+        Ok(schools) => HttpResponse::Ok().json(schools),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
 #[get("/saas/countries")]
 pub async fn list_countries(
     repo: web::Data<Repository>,
@@ -411,7 +449,88 @@ pub async fn create_managed_school(
     let subdomain = body["subdomain"].as_str().unwrap_or_default();
     let country_id = body["country_id"].as_i64().map(|id| id as i32);
 
-    match repo.create_school(name, subdomain, country_id).await {
+    match repo.create_school(name, subdomain, country_id, false).await {
+        Ok(school) => HttpResponse::Ok().json(school),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Root dashboard: enriched platform-wide stats (total users, licenses, schools, etc.)
+#[get("/saas/dashboard")]
+pub async fn get_root_dashboard(
+    repo: web::Data<Repository>,
+    claims: Claims
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+    match repo.get_root_dashboard_stats().await {
+        Ok(stats) => HttpResponse::Ok().json(stats),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Full license listing with school name for the root console
+#[get("/saas/licenses")]
+pub async fn list_all_licenses(
+    repo: web::Data<Repository>,
+    claims: Claims
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+    match repo.list_all_licenses_with_school().await {
+        Ok(licenses) => HttpResponse::Ok().json(licenses),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Schools enriched with user counts and license status for the root console
+#[get("/saas/schools/stats")]
+pub async fn list_schools_stats(
+    repo: web::Data<Repository>,
+    claims: Claims
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+    match repo.list_schools_with_stats().await {
+        Ok(schools) => HttpResponse::Ok().json(schools),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Get a single school's details for the root console
+#[get("/saas/schools/{id}")]
+pub async fn get_school(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    path: web::Path<Uuid>
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+    let school_id = path.into_inner();
+    match repo.get_school_by_id(school_id).await {
+        Ok(Some(school)) => HttpResponse::Ok().json(school),
+        Ok(None) => HttpResponse::NotFound().json(json!({"error": "School not found"})),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Update school information from the root console
+#[put("/saas/schools/{id}")]
+pub async fn update_school(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    path: web::Path<Uuid>,
+    body: web::Json<UpdateSchoolRequest>
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+    let school_id = path.into_inner();
+    match repo.update_school(school_id, &body.name, &body.subdomain, body.country_id).await {
         Ok(school) => HttpResponse::Ok().json(school),
         Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
     }
@@ -447,4 +566,104 @@ pub async fn index(repo: web::Data<Repository>) -> HttpResponse {
         "schools_found": schools.len(),
         "schools": schools
     }))
+}
+#[post("/admin/bulk-import")]
+pub async fn bulk_import(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    mut payload: Multipart
+) -> HttpResponse {
+    // RBAC check: Solo admin de la institución
+    if claims.role != "admin" {
+        return HttpResponse::Forbidden().json(json!({"error": "Only admins can perform bulk imports"}));
+    }
+
+    let school_id = match Uuid::parse_str(&claims.school_id) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().json(json!({"error": "Invalid school ID"})),
+    };
+
+    let mut users_to_create = Vec::new();
+
+    while let Ok(Some(mut field)) = payload.try_next().await {
+        let mut bytes = Vec::new();
+        while let Ok(Some(chunk)) = field.try_next().await {
+            bytes.extend_from_slice(&chunk);
+        }
+
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(Cursor::new(bytes));
+
+        for result in rdr.deserialize::<BulkUserRecord>() {
+            match result {
+                Ok(record) => {
+                    let role_id = match record.role.to_lowercase().as_str() {
+                        "profesor" => 2,
+                        "alumno" | "estudiante" => 3,
+                        _ => continue, 
+                    };
+                    
+                    let hashed = hash_password(&record.password);
+                    users_to_create.push((record.name, record.email, hashed, role_id));
+                }
+                Err(e) => {
+                    error!("CSV Deserialization error: {}", e);
+                }
+            }
+        }
+    }
+
+    if users_to_create.is_empty() {
+        return HttpResponse::BadRequest().json(json!({"error": "No valid user data found in CSV"}));
+    }
+
+    match repo.bulk_create_users(school_id, users_to_create).await {
+        Ok(count) => HttpResponse::Ok().json(json!({
+            "message": "Bulk import completed successfully",
+            "imported_count": count
+        })),
+        Err(e) => {
+            error!("Bulk SQL error: {}", e);
+            HttpResponse::InternalServerError().json(json!({"error": "Database error during bulk import"}))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct BulkUserRecord {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub role: String,
+}
+
+#[put("/admin/branding")]
+pub async fn update_branding(
+    repo: web::Data<Repository>,
+    claims: crate::auth::Claims,
+    body: web::Json<UpdateBrandingRequest>
+) -> HttpResponse {
+    // Only admins can update branding
+    if claims.role != "admin" {
+        return HttpResponse::Forbidden().json(json!({"error": "Only admins can update branding"}));
+    }
+
+    let school_id = match Uuid::parse_str(&claims.school_id) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().json(json!({"error": "Invalid school ID"})),
+    };
+
+    match repo.update_school_branding(
+        school_id,
+        body.logo_url.as_deref(),
+        body.primary_color.as_deref(),
+        body.secondary_color.as_deref()
+    ).await {
+        Ok(school) => HttpResponse::Ok().json(school),
+        Err(e) => {
+            error!("Error updating branding: {}", e);
+            HttpResponse::InternalServerError().json(json!({"error": "Database error"}))
+        }
+    }
 }

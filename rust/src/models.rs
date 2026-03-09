@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
@@ -12,6 +13,9 @@ pub struct School {
     pub is_system_admin: bool,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub logo_url: Option<String>,
+    pub primary_color: Option<String>,
+    pub secondary_color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
@@ -145,4 +149,47 @@ pub struct SaasDashboardStats {
     pub total_schools: i64,
     pub active_licenses: i64,
     pub expiring_licenses: i64,
+}
+
+/// Extended stats for the root/platform-owner dashboard
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RootDashboardStats {
+    pub total_schools: i64,
+    pub total_users: i64,
+    pub active_licenses: i64,
+    pub trial_licenses: i64,
+    pub expiring_licenses: i64,
+    pub expired_licenses: i64,
+    pub mrr: rust_decimal::Decimal,
+    pub annual_forecast: rust_decimal::Decimal,
+    pub revenue_by_plan: HashMap<String, rust_decimal::Decimal>,
+}
+
+/// A license enriched with the school name
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LicenseWithSchool {
+    pub id: Uuid,
+    pub school_id: Uuid,
+    pub school_name: String,
+    pub plan_type: String,
+    pub status: String,
+    pub expiry_date: DateTime<Utc>,
+    pub auto_renew: bool,
+    pub card_last4: Option<String>,
+}
+
+/// A school enriched with user count and license status
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SchoolWithStats {
+    pub id: Uuid,
+    pub name: String,
+    pub subdomain: String,
+    pub is_system_admin: bool,
+    pub user_count: i64,
+    pub license_status: Option<String>,
+    pub license_plan: Option<String>,
+    pub country_code: Option<String>,
+    pub logo_url: Option<String>,
+    pub primary_color: Option<String>,
+    pub secondary_color: Option<String>,
 }

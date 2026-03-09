@@ -25,21 +25,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&database_url)
         .await?;
 
-    let repo = Repository::new(pool);
+    let repo = Repository::new(pool.clone());
     
     println!("🚀 Starting bootstrap process...");
 
-    // 1. Create School
+    // 1. Ensure 'root' role exists and has all permissions
+    println!("🔐 Setting up 'root' role and permissions...");
+    sqlx::query("INSERT INTO roles (name, description) VALUES ('root', 'Superusuario con acceso total a nivel plataforma') ON CONFLICT (name) DO NOTHING")
+        .execute(&pool)
+        .await?;
+
+    let root_role_id: i32 = sqlx::query_scalar("SELECT id FROM roles WHERE name = 'root'")
+        .fetch_one(&pool)
+        .await?;
+
+    // Assign all permissions to root role
+    sqlx::query("INSERT INTO role_permissions (role_id, permission_id) SELECT $1, id FROM permissions ON CONFLICT DO NOTHING")
+        .bind(root_role_id)
+        .execute(&pool)
+        .await?;
+
+    // 2. Create School (marked as is_system_admin=true)
     let subdomain = school_name.to_lowercase().replace(" ", "-");
-    let school = repo.create_school(school_name, &subdomain, None).await?;
+    let school = repo.create_school(school_name, &subdomain, None, true).await?;
     println!("✅ School created: {} (ID: {})", school.name, school.id);
 
-    // 2. Hash Password
+    // 3. Hash Password
     let password_hash = hash_password(admin_password);
 
-    // 3. Create SuperAdmin User (Role ID 1 is usually admin)
-    let user = repo.create_user(school.id, 1, admin_name, admin_email, &password_hash).await?;
-    println!("✅ SuperAdmin created: {} (ID: {})", user.name, user.id);
+    // 4. Create Root User
+    let user = repo.create_user(school.id, root_role_id, admin_name, admin_email, &password_hash).await?;
+    println!("✅ Root User created: {} (ID: {})", user.name, user.id);
 
     println!("\n✨ Bootstrap completed successfully! You can now log in at the dashboard.");
     

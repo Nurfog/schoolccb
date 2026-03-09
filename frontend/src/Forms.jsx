@@ -202,8 +202,8 @@ export const AttendanceForm = ({ onSubmit, loading, studentName }) => {
                             type="button"
                             onClick={() => setStatus(s)}
                             className={`p-4 rounded-2xl text-xs font-bold uppercase tracking-widest border transition-all ${status === s
-                                    ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 shadow-lg shadow-cyan-500/10'
-                                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                                ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 shadow-lg shadow-cyan-500/10'
+                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
                                 }`}
                         >
                             {s === 'present' ? 'Asistió' : s === 'absent' ? 'Faltó' : s === 'late' ? 'Tarde' : 'Excusa'}
@@ -228,6 +228,94 @@ export const AttendanceForm = ({ onSubmit, loading, studentName }) => {
                 className="w-full bg-cyan-500 text-indigo-950 font-black py-4 rounded-2xl shadow-xl shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-[0.2em]"
             >
                 {loading ? 'Guardando...' : 'Confirmar Asistencia'}
+            </button>
+        </form>
+    );
+};
+export const SchoolForm = ({ onSubmit, loading, countries = [] }) => {
+    const [name, setName] = useState('');
+    const [subdomain, setSubdomain] = useState('');
+    const [countryId, setCountryId] = useState('');
+
+    const handleAction = (e) => {
+        e.preventDefault();
+        onSubmit({ name, subdomain, country_id: countryId ? parseInt(countryId) : null });
+    };
+
+    return (
+        <form onSubmit={handleAction} className="space-y-5">
+            <InputField label="Nombre de la Institución" value={name} onChange={setName} placeholder="Ej: Colegio San Jose" required />
+            <InputField label="Subdominio (SaaS)" value={subdomain} onChange={setSubdomain} placeholder="Ej: sanjose (sin .ccb.edu.co)" required />
+
+            <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100/40 ml-1">País de Operación</label>
+                <div className="relative">
+                    <select
+                        className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all text-sm appearance-none"
+                        value={countryId}
+                        onChange={(e) => setCountryId(e.target.value)}
+                    >
+                        <option value="" className="bg-[#111827]">Selecciona un país...</option>
+                        {countries.map(c => (
+                            <option key={c.id} value={c.id} className="bg-[#111827]">
+                                {c.name} ({c.code})
+                            </option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">▼</div>
+                </div>
+            </div>
+
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-cyan-500 text-indigo-950 font-black py-4 rounded-2xl shadow-xl shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-[0.2em]"
+            >
+                {loading ? 'Creando...' : 'Registrar Nuevo Colegio'}
+            </button>
+        </form>
+    );
+};
+export const SchoolEditForm = ({ onSubmit, loading, countries = [], initialData = {} }) => {
+    const [name, setName] = useState(initialData.name || '');
+    const [subdomain, setSubdomain] = useState(initialData.subdomain || '');
+    const [countryId, setCountryId] = useState(initialData.country_id || '');
+
+    const handleAction = (e) => {
+        e.preventDefault();
+        onSubmit({ name, subdomain, country_id: countryId ? parseInt(countryId) : null });
+    };
+
+    return (
+        <form onSubmit={handleAction} className="space-y-5">
+            <InputField label="Nombre de la Institución" value={name} onChange={setName} placeholder="Ej: Colegio San Jose" required />
+            <InputField label="Subdominio (SaaS)" value={subdomain} onChange={setSubdomain} placeholder="Ej: sanjose" required />
+
+            <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100/40 ml-1">País de Operación</label>
+                <div className="relative">
+                    <select
+                        className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all text-sm appearance-none"
+                        value={countryId}
+                        onChange={(e) => setCountryId(e.target.value)}
+                    >
+                        <option value="" className="bg-[#111827]">Selecciona un país...</option>
+                        {countries.map(c => (
+                            <option key={c.id} value={c.id} className="bg-[#111827]">
+                                {c.name} ({c.code})
+                            </option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">▼</div>
+                </div>
+            </div>
+
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-cyan-500 text-indigo-950 font-black py-4 rounded-2xl shadow-xl shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-[0.2em]"
+            >
+                {loading ? 'Actualizando...' : 'Guardar Cambios'}
             </button>
         </form>
     );

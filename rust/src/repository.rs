@@ -1,5 +1,6 @@
 use sqlx::{Pool, Postgres, Row};
-use crate::models::{User, School, Course, Teacher, Student, Permission};
+use std::collections::HashMap;
+use crate::models::{User, School, Course};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -14,14 +15,16 @@ impl Repository {
 
     // --- Authentication & RBAC ---
 
-    pub async fn get_user_with_role(&self, email: &str) -> Result<Option<(User, String)>, sqlx::Error> {
+    pub async fn get_user_with_role(&self, email: &str) -> Result<Option<(User, String, bool)>, sqlx::Error> {
         let result = sqlx::query(
             r#"
             SELECT 
                 u.id, u.school_id, u.role_id, u.name, u.email, u.password_hash, u.created_at, u.updated_at,
-                r.name as role_name
+                r.name as role_name,
+                s.is_system_admin
             FROM users u
             JOIN roles r ON u.role_id = r.id
+            JOIN schools s ON u.school_id = s.id
             WHERE u.email = $1
             "#
         )
@@ -42,7 +45,8 @@ impl Repository {
                     updated_at: row.get("updated_at"),
                 };
                 let role_name: String = row.get("role_name");
-                Ok(Some((user, role_name)))
+                let is_system_admin: bool = row.get("is_system_admin");
+                Ok(Some((user, role_name, is_system_admin)))
             },
             None => Ok(None)
         }
@@ -67,6 +71,13 @@ impl Repository {
 
     // --- Schools ---
 
+    pub async fn get_school_by_id(&self, id: Uuid) -> Result<Option<School>, sqlx::Error> {
+        sqlx::query_as::<_, School>("SELECT * FROM schools WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+    }
+
     pub async fn get_school_by_subdomain(&self, subdomain: &str) -> Result<Option<School>, sqlx::Error> {
         sqlx::query_as::<_, School>("SELECT * FROM schools WHERE subdomain = $1")
             .bind(subdomain)
@@ -74,13 +85,42 @@ impl Repository {
             .await
     }
 
-    pub async fn create_school(&self, name: &str, subdomain: &str, country_id: Option<i32>) -> Result<School, sqlx::Error> {
+    pub async fn update_school(&self, id: Uuid, name: &str, subdomain: &str, country_id: Option<i32>) -> Result<School, sqlx::Error> {
         sqlx::query_as::<_, School>(
-            "INSERT INTO schools (name, subdomain, country_id) VALUES ($1, $2, $3) RETURNING *"
+            "UPDATE schools SET name = $1, subdomain = $2, country_id = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *"
         )
         .bind(name)
         .bind(subdomain)
         .bind(country_id)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    pub async fn create_school(&self, name: &str, subdomain: &str, country_id: Option<i32>, is_system_admin: bool) -> Result<School, sqlx::Error> {
+        sqlx::query_as::<_, School>(
+            "INSERT INTO schools (name, subdomain, country_id, is_system_admin) VALUES ($1, $2, $3, $4) RETURNING *"
+        )
+        .bind(name)
+        .bind(subdomain)
+        .bind(country_id)
+        .bind(is_system_admin)
+        .fetch_one(&self.pool)
+        .await
+    }
+    pub async fn update_school_branding(&self, id: Uuid, logo_url: Option<&str>, primary_color: Option<&str>, secondary_color: Option<&str>) -> Result<School, sqlx::Error> {
+        sqlx::query_as::<_, School>(
+            r#"
+            UPDATE schools 
+            SET logo_url = $2, primary_color = $3, secondary_color = $4, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            RETURNING *
+            "#
+        )
+        .bind(id)
+        .bind(logo_url)
+        .bind(primary_color)
+        .bind(secondary_color)
         .fetch_one(&self.pool)
         .await
     }
@@ -129,6 +169,123 @@ impl Repository {
             .await
     }
 
+    pub async fn get_root_dashboard_stats(&self) -> Result<crate::models::RootDashboardStats, sqlx::Error> {
+        let total_schools = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM schools WHERE is_system_admin = false")
+            .fetch_one(&self.pool).await?;
+
+        let total_users = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users")
+            .fetch_one(&self.pool).await?;
+
+        let active_licenses = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM saas_licenses WHERE status = 'active'")
+            .fetch_one(&self.pool).await?;
+
+        let trial_licenses = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM saas_licenses WHERE status = 'trial'")
+            .fetch_one(&self.pool).await?;
+
+        let expiring_licenses = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM saas_licenses WHERE expiry_date < (CURRENT_TIMESTAMP + INTERVAL '30 days') AND status = 'active'"
+        ).fetch_one(&self.pool).await?;
+
+        let expired_licenses = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM saas_licenses WHERE status = 'expired'")
+            .fetch_one(&self.pool).await?;
+
+        // Financial Calculations
+        let licenses = sqlx::query("SELECT plan_type, status FROM saas_licenses WHERE status IN ('active', 'trial')")
+            .fetch_all(&self.pool).await?;
+
+        let mut mrr = rust_decimal::Decimal::ZERO;
+        let mut revenue_by_plan = HashMap::new();
+
+        for row in licenses {
+            let plan: String = row.get("plan_type");
+            let status: String = row.get("status");
+
+            let amount = if status == "trial" {
+                rust_decimal::Decimal::ZERO
+            } else {
+                match plan.as_str() {
+                    "enterprise" => rust_decimal::Decimal::from(249),
+                    "premium" => rust_decimal::Decimal::from(99),
+                    _ => rust_decimal::Decimal::from(49), // basic
+                }
+            };
+
+            mrr += amount;
+            *revenue_by_plan.entry(plan).or_insert(rust_decimal::Decimal::ZERO) += amount;
+        }
+
+        let annual_forecast = mrr * rust_decimal::Decimal::from(12);
+
+        Ok(crate::models::RootDashboardStats {
+            total_schools,
+            total_users,
+            active_licenses,
+            trial_licenses,
+            expiring_licenses,
+            expired_licenses,
+            mrr,
+            annual_forecast,
+            revenue_by_plan,
+        })
+    }
+
+    pub async fn list_all_licenses_with_school(&self) -> Result<Vec<crate::models::LicenseWithSchool>, sqlx::Error> {
+        let rows = sqlx::query(r#"
+            SELECT l.id, l.school_id, s.name as school_name, l.plan_type, l.status,
+                   l.expiry_date, l.auto_renew, l.card_last4
+            FROM saas_licenses l
+            JOIN schools s ON l.school_id = s.id
+            ORDER BY l.expiry_date ASC
+        "#)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| crate::models::LicenseWithSchool {
+            id: r.get("id"),
+            school_id: r.get("school_id"),
+            school_name: r.get("school_name"),
+            plan_type: r.get("plan_type"),
+            status: r.get("status"),
+            expiry_date: r.get("expiry_date"),
+            auto_renew: r.get("auto_renew"),
+            card_last4: r.get("card_last4"),
+        }).collect())
+    }
+
+    pub async fn list_schools_with_stats(&self) -> Result<Vec<crate::models::SchoolWithStats>, sqlx::Error> {
+        let rows = sqlx::query(r#"
+            SELECT
+                s.id, s.name, s.subdomain, s.is_system_admin,
+                COUNT(DISTINCT u.id) as user_count,
+                MAX(l.status) as license_status,
+                MAX(l.plan_type) as license_plan,
+                c.code as country_code,
+                s.logo_url, s.primary_color, s.secondary_color
+            FROM schools s
+            LEFT JOIN users u ON u.school_id = s.id
+            LEFT JOIN saas_licenses l ON l.school_id = s.id AND l.status = 'active'
+            LEFT JOIN countries c ON s.country_id = c.id
+            GROUP BY s.id, s.name, s.subdomain, s.is_system_admin, c.code, s.logo_url, s.primary_color, s.secondary_color
+            ORDER BY s.created_at DESC
+        "#)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| crate::models::SchoolWithStats {
+            id: r.get("id"),
+            name: r.get("name"),
+            subdomain: r.get("subdomain"),
+            is_system_admin: r.get("is_system_admin"),
+            user_count: r.get("user_count"),
+            license_status: r.get("license_status"),
+            license_plan: r.get("license_plan"),
+            country_code: r.get("country_code"),
+            logo_url: r.get("logo_url"),
+            primary_color: r.get("primary_color"),
+            secondary_color: r.get("secondary_color"),
+        }).collect())
+    }
+
     // --- Users ---
 
     pub async fn create_user(&self, school_id: Uuid, role_id: i32, name: &str, email: &str, password_hash: &str) -> Result<User, sqlx::Error> {
@@ -146,6 +303,48 @@ impl Repository {
         .bind(password_hash)
         .fetch_one(&self.pool)
         .await
+    }
+
+    pub async fn bulk_create_users(&self, school_id: Uuid, users: Vec<(String, String, String, i32)>) -> Result<i64, sqlx::Error> {
+        let mut tx = self.pool.begin().await?;
+        let mut count = 0;
+
+        for (name, email, password_hash, role_id) in users {
+            // First, insert or update user to get the ID
+            let user = sqlx::query_as::<_, User>(
+                r#"
+                INSERT INTO users (school_id, role_id, name, email, password_hash)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+                RETURNING *
+                "#
+            )
+            .bind(school_id)
+            .bind(role_id)
+            .bind(name)
+            .bind(email)
+            .bind(password_hash)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            // Populate role-specific tables
+            if role_id == 2 { // profesor
+                sqlx::query("INSERT INTO teachers (user_id) VALUES ($1) ON CONFLICT DO NOTHING")
+                    .bind(user.id)
+                    .execute(&mut *tx)
+                    .await?;
+            } else if role_id == 3 { // alumno
+                sqlx::query("INSERT INTO students (user_id) VALUES ($1) ON CONFLICT DO NOTHING")
+                    .bind(user.id)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            
+            count += 1;
+        }
+
+        tx.commit().await?;
+        Ok(count)
     }
 
     // --- Academic Module: Courses ---

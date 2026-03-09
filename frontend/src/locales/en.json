@@ -1,0 +1,97 @@
+{
+    "sidebar": {
+        "dashboard": "Dashboard",
+        "courses": "My Courses",
+        "attendance": "Attendance",
+        "grades": "Grades",
+        "report_card": "My Report Card",
+        "teachers": "Teachers",
+        "students": "Students",
+        "import": "Import",
+        "branding": "Branding",
+        "schools": "My Schools",
+        "saas_finances": "SaaS Finances",
+        "managed_schools": "Manage Schools",
+        "licenses": "Licenses",
+        "platform": "Academic Platform"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "saas_title": "SaaS Administration",
+        "subtitle": "Academic activity summary",
+        "saas_subtitle": "Centralized platform management"
+    },
+    "pages": {
+        "report_card": "My Academic Report",
+        "branding": "Brand & Identity",
+        "licenses": "SaaS Licenses",
+        "managed_schools": "School Management"
+    },
+    "page_subtitles": {
+        "branding": "Configure your institution's logo and colors.",
+        "licenses": "Global subscription control panel.",
+        "managed_schools": "Complete view of schools registered on the platform."
+    },
+    "buttons": {
+        "new": "+ New",
+        "new_student": "+ New Student",
+        "new_teacher": "+ New Teacher",
+        "new_course": "+ New Course",
+        "new_school": "+ New School",
+        "enroll": "+ Enroll Student",
+        "back": "← Back to Courses",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "import": "Import CSV",
+        "enter": "Enter Panel",
+        "entering": "Signing In..."
+    },
+    "login": {
+        "title": "Welcome to the administration system",
+        "email": "Institutional Email",
+        "password": "Password",
+        "forgot": "Forgot your password? Contact technical support."
+    },
+    "branding": {
+        "title": "Branding",
+        "subtitle": "Define your institution's visual identity",
+        "logo_label": "Logo URL (PNG/SVG recommended)",
+        "logo_placeholder": "https://example.com/logo.png",
+        "primary_color": "Primary Color",
+        "secondary_color": "Secondary Color",
+        "success": "Visual identity updated successfully",
+        "error": "Error updating configuration"
+    },
+    "bulk_import": {
+        "title": "Bulk User Import",
+        "subtitle": "Upload a CSV file to create multiple users at once.",
+        "download_template": "Download CSV Template",
+        "select_file": "Select CSV File",
+        "uploading": "Importing...",
+        "upload": "Import Users",
+        "success": "users imported successfully.",
+        "format_title": "CSV File Format",
+        "format_description": "The file must contain the columns: name, email, password, role. Valid roles are: alumno, profesor."
+    },
+    "report_card": {
+        "empty": "No grade data available yet.",
+        "course": "Course",
+        "average": "Average",
+        "attendance": "Attendance"
+    },
+    "notifications": {
+        "created": "created successfully",
+        "updated": "updated successfully",
+        "deleted": "deleted successfully",
+        "error": "Error processing the request"
+    },
+    "common": {
+        "loading": "Loading...",
+        "no_data": "No data available.",
+        "actions": "Actions",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "confirm": "Confirm"
+    }
+}

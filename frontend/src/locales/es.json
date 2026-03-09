@@ -1,0 +1,97 @@
+{
+    "sidebar": {
+        "dashboard": "Panel de Control",
+        "courses": "Mis Cursos",
+        "attendance": "Asistencia",
+        "grades": "Calificaciones",
+        "report_card": "Mi Boletín",
+        "teachers": "Profesores",
+        "students": "Estudiantes",
+        "import": "Importación",
+        "branding": "Personalización",
+        "schools": "Mis Colegios",
+        "saas_finances": "Finanzas SaaS",
+        "managed_schools": "Gestión de Colegios",
+        "licenses": "Licencias",
+        "platform": "Plataforma Académica"
+    },
+    "dashboard": {
+        "title": "Panel de Control",
+        "saas_title": "SaaS Administration",
+        "subtitle": "Resumen de actividad académica",
+        "saas_subtitle": "Gestión centralizada de la plataforma"
+    },
+    "pages": {
+        "report_card": "Mi Reporte Académico",
+        "branding": "Marca e Identidad",
+        "licenses": "Licencias SaaS",
+        "managed_schools": "Gestión de Colegios"
+    },
+    "page_subtitles": {
+        "branding": "Configura el logo y los colores institucionales.",
+        "licenses": "Panel de control de suscripciones globales.",
+        "managed_schools": "Vista completa de colegios registrados en la plataforma."
+    },
+    "buttons": {
+        "new": "+ Nuevo",
+        "new_student": "+ Nuevo Estudiante",
+        "new_teacher": "+ Nuevo Profesor",
+        "new_course": "+ Nuevo Curso",
+        "new_school": "+ Nuevo Colegio",
+        "enroll": "+ Matricular Alumno",
+        "back": "← Volver a Cursos",
+        "save": "Guardar Cambios",
+        "saving": "Guardando...",
+        "import": "Importar CSV",
+        "enter": "Entrar al Panel",
+        "entering": "Iniciando Sesión..."
+    },
+    "login": {
+        "title": "Bienvenido al sistema de administración",
+        "email": "Email Institucional",
+        "password": "Contraseña",
+        "forgot": "¿Olvidaste tu contraseña? Contacta a soporte técnico."
+    },
+    "branding": {
+        "title": "Personalización",
+        "subtitle": "Define la identidad visual de tu institución",
+        "logo_label": "URL del Logo (PNG/SVG recomendado)",
+        "logo_placeholder": "https://ejemplo.com/logo.png",
+        "primary_color": "Color Primario",
+        "secondary_color": "Color Secundario",
+        "success": "Identidad visual actualizada con éxito",
+        "error": "Error al actualizar la configuración"
+    },
+    "bulk_import": {
+        "title": "Importación Masiva de Usuarios",
+        "subtitle": "Sube un archivo CSV para crear múltiples usuarios a la vez.",
+        "download_template": "Descargar Plantilla CSV",
+        "select_file": "Seleccionar Archivo CSV",
+        "uploading": "Importando...",
+        "upload": "Importar Usuarios",
+        "success": "usuarios importados exitosamente.",
+        "format_title": "Formato del Archivo CSV",
+        "format_description": "El archivo debe contener las columnas: name, email, password, role. Los roles válidos son: alumno, profesor."
+    },
+    "report_card": {
+        "empty": "No hay datos de calificaciones disponibles aún.",
+        "course": "Curso",
+        "average": "Promedio",
+        "attendance": "Asistencia"
+    },
+    "notifications": {
+        "created": "creado exitosamente",
+        "updated": "actualizado exitosamente",
+        "deleted": "eliminado exitosamente",
+        "error": "Error al procesar la solicitud"
+    },
+    "common": {
+        "loading": "Cargando...",
+        "no_data": "No hay datos disponibles.",
+        "actions": "Acciones",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar"
+    }
+}
