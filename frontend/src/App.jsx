@@ -6,7 +6,7 @@ import Modal from './Modal';
 import BulkImport from './BulkImport';
 import BrandingConfig from './BrandingConfig';
 import LanguageSwitcher from './LanguageSwitcher';
-import { CourseForm, TeacherForm, StudentForm, EnrollmentForm, GradeForm, AttendanceForm, SchoolForm, SchoolEditForm } from './Forms';
+import { CourseForm, TeacherForm, StudentForm, EnrollmentForm, GradeForm, AttendanceForm, SchoolForm, SchoolEditForm, LicenseForm } from './Forms';
 
 const SidebarItem = ({ icon, label, active, onClick }) => (
   <button
@@ -499,6 +499,7 @@ function App() {
                     <th className="p-5 text-[10px] font-black uppercase tracking-widest text-blue-100/40 text-center">Estado</th>
                     <th className="p-5 text-[10px] font-black uppercase tracking-widest text-blue-100/40">Vencimiento</th>
                     <th className="p-5 text-[10px] font-black uppercase tracking-widest text-blue-100/40 text-center">Auto-Renovar</th>
+                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-blue-100/40 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -539,9 +540,12 @@ function App() {
                           </div>
                         </td>
                         <td className="p-5 text-center">
-                          <span className={`text-sm ${lic.auto_renew ? 'text-emerald-400' : 'text-red-400/60'}`}>
-                            {lic.auto_renew ? '✓' : '✗'}
-                          </span>
+                          <button
+                            onClick={() => { setSelectedItem(lic); setModalType('license'); setIsModalOpen(true); }}
+                            className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all"
+                          >
+                            ⚙️
+                          </button>
                         </td>
                       </tr>
                     );
@@ -818,6 +822,18 @@ function App() {
                         </span>
                       </div>
                       <div className="flex space-x-3">
+                        {activeTab === 'managed_schools' && (
+                          <button
+                            onClick={() => {
+                              setSelectedItem({ school_id: item.id, school_name: item.name, plan_type: item.license_plan || 'basic', status: item.license_status || 'active' });
+                              setModalType('license');
+                              setIsModalOpen(true);
+                            }}
+                            className="text-indigo-400 text-xs font-black uppercase hover:underline"
+                          >
+                            Licencia
+                          </button>
+                        )}
                         {activeTab === 'courses' ? (
                           <button
                             onClick={() => {
@@ -894,6 +910,7 @@ function App() {
             {activeTab === 'teachers' && <TeacherForm loading={actionLoading} onSubmit={f => handleAction('post', '/academic/teachers', f, 'Profesor registrado')} />}
             {activeTab === 'students' && <StudentForm loading={actionLoading} onSubmit={f => handleAction('post', '/academic/students', f, 'Estudiante inscrito')} />}
             {activeTab === 'managed_schools' && <SchoolForm loading={actionLoading} onSubmit={f => handleAction('post', '/saas/schools', f, 'Colegio registrado en la plataforma')} countries={countries} />}
+            {modalType === 'license' && <LicenseForm loading={actionLoading} onSubmit={f => handleAction('post', '/saas/licenses', { ...f, school_id: selectedItem.school_id }, 'Licencia actualizada con éxito')} initialData={selectedItem} />}
           </>
         )}
       </Modal>

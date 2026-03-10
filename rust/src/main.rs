@@ -1,11 +1,11 @@
-use actix_web::{web, App, HttpServer};
-use std::env;
-use sqlx::postgres::PgPoolOptions;
-use dotenvy::dotenv;
-use colegio_backend::repository::Repository;
-use colegio_backend::handlers;
 use actix_cors::Cors;
 use actix_web::http::header;
+use actix_web::{App, HttpServer, web};
+use colegio_backend::handlers;
+use colegio_backend::repository::Repository;
+use dotenvy::dotenv;
+use sqlx::postgres::PgPoolOptions;
+use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -28,7 +28,9 @@ async fn main() -> std::io::Result<()> {
 
     let repo = Repository::new(pool.clone());
 
-    let port = env::var("PORT").or_else(|_| env::var("RUST_API_PORT")).unwrap_or_else(|_| "8080".to_string());
+    let port = env::var("PORT")
+        .or_else(|_| env::var("RUST_API_PORT"))
+        .unwrap_or_else(|_| "8080".to_string());
     let bind_addr = format!("0.0.0.0:{}", port);
 
     println!("Starting server on {}", bind_addr);
@@ -39,7 +41,11 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
+            .allowed_headers(vec![
+                header::AUTHORIZATION,
+                header::ACCEPT,
+                header::CONTENT_TYPE,
+            ])
             .supports_credentials()
             .max_age(3600);
 
@@ -81,6 +87,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::update_school)
             .service(handlers::bulk_import)
             .service(handlers::update_branding)
+            .service(handlers::std_upsert_license)
     })
     .bind(&bind_addr)?
     .run()

@@ -320,3 +320,89 @@ export const SchoolEditForm = ({ onSubmit, loading, countries = [], initialData 
         </form>
     );
 };
+
+export const LicenseForm = ({ loading, onSubmit, initialData = {} }) => {
+    const [planType, setPlanType] = useState(initialData.plan_type || 'basic');
+    const [status, setStatus] = useState(initialData.status || 'active');
+    const [expiryDate, setExpiryDate] = useState(
+        initialData.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : ''
+    );
+    const [autoRenew, setAutoRenew] = useState(initialData.auto_renew || false);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit({
+            plan_type: planType,
+            status: status,
+            expiry_date: new Date(expiryDate).toISOString(),
+            auto_renew: autoRenew,
+        });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-blue-100/40 ml-4">Plan</label>
+                <div className="relative group">
+                    <select
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-cyan-500/50 transition-all appearance-none"
+                        value={planType}
+                        onChange={(e) => setPlanType(e.target.value)}
+                    >
+                        <option value="basic" className="bg-[#111827]">Basic ($49/mo)</option>
+                        <option value="premium" className="bg-[#111827]">Premium ($99/mo)</option>
+                        <option value="enterprise" className="bg-[#111827]">Enterprise ($249/mo)</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">▼</div>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-blue-100/40 ml-4">Estado</label>
+                <div className="relative group">
+                    <select
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-cyan-500/50 transition-all appearance-none"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                    >
+                        <option value="active" className="bg-[#111827]">Activa</option>
+                        <option value="trial" className="bg-[#111827]">Prueba (Trial)</option>
+                        <option value="expired" className="bg-[#111827]">Vencida</option>
+                        <option value="suspended" className="bg-[#111827]">Suspendida</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">▼</div>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-blue-100/40 ml-4">Vencimiento</label>
+                <input
+                    type="date"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-cyan-500/50 transition-all"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                />
+            </div>
+
+            <div className="flex items-center space-x-3 px-4">
+                <input
+                    type="checkbox"
+                    id="autoRenew"
+                    className="w-5 h-5 rounded-lg border-white/10 bg-white/5 accent-cyan-500 focus:ring-0"
+                    checked={autoRenew}
+                    onChange={(e) => setAutoRenew(e.target.checked)}
+                />
+                <label htmlFor="autoRenew" className="text-sm font-bold text-blue-100/60 cursor-pointer">Auto-renovar automáticamente</label>
+            </div>
+
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-cyan-500 text-indigo-950 font-black py-4 rounded-2xl shadow-xl shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-[0.2em]"
+            >
+                {loading ? 'Procesando...' : 'Guardar Licencia'}
+            </button>
+        </form>
+    );
+};
