@@ -125,13 +125,21 @@ function App() {
       if (activeTab === 'report_card') {
         const result = await api.get('/academic/my-report-card');
         setReportCard(result);
-      } else if (activeTab === 'managed_schools' || activeTab === 'school_detail') {
+      } else if (activeTab === 'managed_schools') {
         if (countries.length === 0) fetchCountries();
         const result = await api.get('/saas/schools');
         setData(result);
       } else if (activeTab === 'school_detail' && selectedSchool) {
-        const result = await api.get(`/saas/schools/${selectedSchool.id}`);
-        setSelectedSchool(result);
+        // Obtener datos actualizados del colegio específico con información de licencia
+        if (countries.length === 0) fetchCountries();
+        // Primero obtener datos del colegio
+        const schoolData = await api.get(`/saas/schools/${selectedSchool.id}`);
+        // Luego obtener estadísticas con licencia
+        const statsData = await api.get('/saas/schools/stats');
+        // Buscar el colegio en las estadísticas para obtener license_plan y license_status
+        const schoolWithLicense = statsData.find(s => s.id === selectedSchool.id) || schoolData;
+        // Combinar datos
+        setSelectedSchool({ ...schoolData, ...schoolWithLicense });
       } else if (activeTab !== 'dashboard') {
         const endpoint = activeTab === 'course_members'
           ? `/academic/courses/${selectedItem.id}/students`
@@ -569,7 +577,12 @@ function App() {
                         </td>
                         <td className="p-5 text-center">
                           <button
-                            onClick={() => { setSelectedItem(lic); setModalType('license'); setIsModalOpen(true); }}
+                            onClick={() => { 
+                              // Usar school_id en lugar del id de licencia
+                              setSelectedItem({ id: lic.school_id, name: lic.school_name }); 
+                              setModalType('license'); 
+                              setIsModalOpen(true); 
+                            }}
                             className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all"
                           >
                             ⚙️
@@ -1002,7 +1015,35 @@ function App() {
             {activeTab === 'teachers' && <TeacherForm loading={actionLoading} onSubmit={f => handleAction('post', '/academic/teachers', f, 'Profesor registrado')} />}
             {activeTab === 'students' && <StudentForm loading={actionLoading} onSubmit={f => handleAction('post', '/academic/students', f, 'Estudiante inscrito')} />}
             {activeTab === 'managed_schools' && <SchoolForm loading={actionLoading} onSubmit={f => handleAction('post', '/saas/schools', f, 'Colegio registrado en la plataforma')} countries={countries} />}
-            {modalType === 'license' && <LicenseForm loading={actionLoading} onSubmit={f => handleAction('post', '/saas/licenses', { ...f, school_id: selectedItem.school_id }, 'Licencia actualizada con éxito')} initialData={selectedItem} />}
+            {modalType === 'license' && (
+              <LicenseForm 
+                loading={actionLoading} 
+                onSubmit={(f) => {
+                  // Usar el nuevo endpoint para asignar/prorrogar licencias
+                  api.post(`/saas/schools/${selectedItem.id}/license`, {
+                    plan_type: f.plan_type,
+                    expiry_date: f.expiry_date,
+                    auto_renew: f.auto_renew || false
+                  }).then(() => {
+                    setNotification({ type: 'success', message: 'Licencia asignada exitosamente' });
+                    setIsModalOpen(false);
+                    // Refrescar datos del colegio y de la lista general
+                    fetchData();
+                    // Actualizar selectedSchool directamente con la nueva información
+                    if (selectedSchool) {
+                      setSelectedSchool({
+                        ...selectedSchool,
+                        license_plan: f.plan_type,
+                        license_status: 'active'
+                      });
+                    }
+                  }).catch(err => {
+                    setNotification({ type: 'error', message: err.message || 'Error al asignar licencia' });
+                  });
+                }} 
+                initialData={selectedItem} 
+              />
+            )}
           </>
         )}
       </Modal>

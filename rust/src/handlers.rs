@@ -79,7 +79,6 @@ pub struct UpsertLicenseRequest {
 
 #[derive(Deserialize)]
 pub struct AssignLicenseRequest {
-    pub school_id: Uuid,
     pub plan_type: String,
     pub expiry_date: chrono::DateTime<chrono::Utc>,
     pub auto_renew: Option<bool>,
