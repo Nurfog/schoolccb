@@ -46,6 +46,8 @@ function App() {
   const [countries, setCountries] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [school, setSchool] = useState(api.getSchool());
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newCountry, setNewCountry] = useState({ name: '', code: '' });
 
   useEffect(() => {
     // If we have school data from login or fetch, apply branding
@@ -63,17 +65,29 @@ function App() {
   const fetchData = async () => {
     if (activeTab === 'settings') return;
 
-    if ((activeTab === 'dashboard' || activeTab === 'saas_finances') && user.is_system_admin) {
+    // Root Dashboard
+    if (activeTab === 'dashboard' && user.is_system_admin) {
       try {
         const stats = await api.get('/saas/dashboard');
         setRootStats(stats);
       } catch (err) {
-        // fallback to old stats endpoint if needed
-        try { const s = await api.get('/saas/stats'); setSaasStats(s); } catch { }
+        console.error('Error fetching root dashboard:', err);
       }
       return;
     }
 
+    // Root Finances (saas_finances)
+    if (activeTab === 'saas_finances' && user.is_system_admin) {
+      try {
+        const stats = await api.get('/saas/dashboard');
+        setRootStats(stats);
+      } catch (err) {
+        console.error('Error fetching finances:', err);
+      }
+      return;
+    }
+
+    // Root Licenses
     if (activeTab === 'saas_licenses') {
       setLoading(true);
       try {
@@ -84,11 +98,23 @@ function App() {
       return;
     }
 
+    // Root Schools Health
     if (activeTab === 'schools_health') {
       setLoading(true);
       try {
         const result = await api.get('/saas/schools/stats');
         setSchoolStats(result);
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+      return;
+    }
+
+    // Root Countries
+    if (activeTab === 'countries') {
+      setLoading(true);
+      try {
+        const result = await api.get('/saas/countries');
+        setCountries(result);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
       return;
@@ -226,7 +252,7 @@ function App() {
       )}
 
       {/* Sidebar */}
-      <aside className="w-72 bg-white/5 border-r border-white/10 p-6 flex flex-col space-y-8 backdrop-blur-xl">
+      <aside className="w-72 bg-white/5 border-r border-white/10 p-6 flex flex-col backdrop-blur-xl h-screen overflow-y-auto">
         <div className="flex items-center space-x-3 px-2 cursor-pointer group" onClick={() => { setActiveTab('dashboard'); setViewingGrades(false); }}>
           {school?.logo_url ? (
             <img src={school.logo_url} alt="Logo" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-brand-primary/20 transform group-hover:rotate-12 transition-transform" />
@@ -240,7 +266,7 @@ function App() {
           </span>
         </div>
 
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-2 mt-8">
           <SidebarItem icon="📊" label={t('sidebar.dashboard')} active={activeTab === 'dashboard' && !viewingGrades} onClick={() => { setActiveTab('dashboard'); setViewingGrades(false); }} />
 
           {user.is_system_admin ? (
@@ -720,6 +746,16 @@ function App() {
                       <span className="text-sm text-blue-100/50">Subdominio Activo</span>
                       <span className="font-bold text-sm text-cyan-400">{selectedSchool.subdomain}.ccb.edu.co</span>
                     </div>
+                    <button
+                      onClick={() => {
+                        setSelectedItem(selectedSchool);
+                        setModalType('license');
+                        setIsModalOpen(true);
+                      }}
+                      className="w-full mt-4 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white py-3 rounded-xl font-bold hover:scale-105 transition-all"
+                    >
+                      {selectedSchool.license_status ? '🔄 Prorrogar Licencia' : '➕ Asignar Licencia'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -736,6 +772,55 @@ function App() {
                   onSubmit={(f) => handleAction('put', `/saas/schools/${selectedSchool.id}`, f, 'Datos del colegio actualizados')}
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Countries View (Root) */}
+        {activeTab === 'countries' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-500">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-black">Países Disponibles</h2>
+                <p className="text-blue-100/50 text-sm">Gestión de países para colegios</p>
+              </div>
+              <button
+                onClick={() => setModalOpen(true)}
+                className="bg-brand-primary text-indigo-900 px-6 py-3 rounded-xl font-bold hover:scale-105 transition-all"
+              >
+                + Nuevo País
+              </button>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-md">
+              <table className="w-full text-left">
+                <thead className="bg-white/5 border-b border-white/10">
+                  <tr>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-blue-100/40">ID</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-blue-100/40">País</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-blue-100/40">Código</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {countries.length > 0 ? countries.map(country => (
+                    <tr key={country.id} className="hover:bg-white/5 transition-colors">
+                      <td className="p-6 text-blue-100/60 font-mono">{country.id}</td>
+                      <td className="p-6 font-bold">{country.name}</td>
+                      <td className="p-6">
+                        <span className="bg-white/10 px-3 py-1 rounded-lg font-mono text-sm">
+                          {country.code}
+                        </span>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="3" className="p-20 text-center text-blue-100/30">
+                        No hay países registrados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -920,6 +1005,48 @@ function App() {
             {modalType === 'license' && <LicenseForm loading={actionLoading} onSubmit={f => handleAction('post', '/saas/licenses', { ...f, school_id: selectedItem.school_id }, 'Licencia actualizada con éxito')} initialData={selectedItem} />}
           </>
         )}
+      </Modal>
+
+      {/* Country Modal */}
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo País">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold mb-2">Nombre del País</label>
+            <input
+              type="text"
+              value={newCountry.name}
+              onChange={(e) => setNewCountry({ ...newCountry, name: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:border-cyan-500"
+              placeholder="Ej: Colombia"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold mb-2">Código (2 letras)</label>
+            <input
+              type="text"
+              value={newCountry.code}
+              onChange={(e) => setNewCountry({ ...newCountry, code: e.target.value.toUpperCase() })}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:border-cyan-500 uppercase"
+              placeholder="Ej: CO"
+              maxLength={2}
+            />
+          </div>
+          <button
+            onClick={() => {
+              api.post('/saas/countries', newCountry).then(() => {
+                setNotification({ type: 'success', message: 'País creado exitosamente' });
+                setModalOpen(false);
+                setNewCountry({ name: '', code: '' });
+                fetchCountries();
+              }).catch(err => {
+                setNotification({ type: 'error', message: err.message });
+              });
+            }}
+            className="w-full bg-brand-primary text-indigo-900 py-3 rounded-xl font-bold hover:scale-105 transition-all"
+          >
+            Guardar País
+          </button>
+        </div>
       </Modal>
     </div>
   );

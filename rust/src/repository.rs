@@ -211,6 +211,16 @@ impl Repository {
             .await
     }
 
+    pub async fn create_country(&self, name: &str, code: &str) -> Result<crate::models::Country, sqlx::Error> {
+        sqlx::query_as::<_, crate::models::Country>(
+            "INSERT INTO countries (name, code) VALUES ($1, $2) RETURNING *"
+        )
+        .bind(name)
+        .bind(code)
+        .fetch_one(&self.pool)
+        .await
+    }
+
     pub async fn get_root_dashboard_stats(
         &self,
     ) -> Result<crate::models::RootDashboardStats, sqlx::Error> {

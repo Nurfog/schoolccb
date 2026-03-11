@@ -77,6 +77,63 @@ pub struct UpsertLicenseRequest {
     pub auto_renew: bool,
 }
 
+#[derive(Deserialize)]
+pub struct AssignLicenseRequest {
+    pub school_id: Uuid,
+    pub plan_type: String,
+    pub expiry_date: chrono::DateTime<chrono::Utc>,
+    pub auto_renew: Option<bool>,
+}
+
+/// Asignar o prorrogar licencia de un colegio
+#[post("/saas/schools/{school_id}/license")]
+pub async fn assign_license(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    path: web::Path<Uuid>,
+    body: web::Json<AssignLicenseRequest>,
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+
+    let school_id = path.into_inner();
+    
+    // Verificar que el colegio existe
+    match repo.get_school_by_id(school_id).await {
+        Ok(Some(_)) => {},
+        Ok(None) => return HttpResponse::NotFound().json(json!({"error": "School not found"})),
+        Err(e) => return HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+
+    // Asignar licencia (upsert)
+    match repo
+        .upsert_license(
+            school_id,
+            &body.plan_type,
+            "active",
+            body.expiry_date,
+            body.auto_renew.unwrap_or(false),
+        )
+        .await
+    {
+        Ok(license) => {
+            info!(
+                user_id = %claims.sub,
+                school_id = %school_id,
+                plan_type = %body.plan_type,
+                "License assigned/extended"
+            );
+            HttpResponse::Ok().json(json!({
+                "message": "Licencia asignada exitosamente",
+                "license": license,
+                "action": "assigned"
+            }))
+        }
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
 #[post("/auth/login")]
 pub async fn login(repo: web::Data<Repository>, body: web::Json<LoginRequest>) -> HttpResponse {
     let user_role = repo.get_user_with_role(&body.email).await;
@@ -477,6 +534,34 @@ pub async fn list_managed_schools(repo: web::Data<Repository>, claims: Claims) -
 pub async fn list_countries(repo: web::Data<Repository>, _claims: Claims) -> HttpResponse {
     match repo.list_countries().await {
         Ok(countries) => HttpResponse::Ok().json(countries),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct CreateCountryRequest {
+    pub name: String,
+    pub code: String,
+}
+
+#[post("/saas/countries")]
+pub async fn create_country(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    body: web::Json<CreateCountryRequest>,
+) -> HttpResponse {
+    // Solo root o admin pueden crear países
+    if (claims.role != "admin" && claims.role != "root")
+        || (!claims
+            .permissions
+            .contains(&"saas:manage_schools".to_string())
+            && claims.role != "root")
+    {
+        return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    match repo.create_country(&body.name, &body.code).await {
+        Ok(country) => HttpResponse::Ok().json(country),
         Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
     }
 }

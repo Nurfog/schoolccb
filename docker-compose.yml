@@ -99,7 +99,7 @@ services:
     networks:
       - colleges_network
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
       retries: 3
       start_period: 40s
@@ -131,7 +131,7 @@ services:
     networks:
       - colleges_network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
       interval: 30s
       retries: 3
       start_period: 10s

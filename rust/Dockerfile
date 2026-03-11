@@ -32,11 +32,16 @@ COPY migrations ./migrations
 # Compila el código real
 RUN cargo build --release
 
-# Etapa 2: Runtime con imagen minimalista
-FROM gcr.io/distroless/cc-debian12
+# Etapa 2: Runtime
+FROM debian:bookworm-slim
 
-# Copiar certificados SSL para conexiones HTTPS
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Instalar librerías necesarias y curl para healthcheck
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libssl3 \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

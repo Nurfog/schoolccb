@@ -6,6 +6,11 @@ const api = {
         method: 'POST',
         body: JSON.stringify(body)
     }),
+    put: (endpoint, body) => request(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+    }),
+    delete: (endpoint) => request(endpoint, { method: 'DELETE' }),
 
     saveToken: (token) => localStorage.setItem('token', token),
     saveUser: (user) => localStorage.setItem('user', JSON.stringify(user)),

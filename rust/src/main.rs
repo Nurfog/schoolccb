@@ -131,6 +131,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::get_saas_stats)
             .service(handlers::list_expiring_licenses)
             .service(handlers::list_countries)
+            .service(handlers::create_country)
             .service(handlers::list_managed_schools)
             .service(handlers::create_managed_school)
             .service(handlers::get_root_dashboard)
@@ -141,6 +142,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::bulk_import)
             .service(handlers::update_branding)
             .service(handlers::std_upsert_license)
+            .service(handlers::assign_license)
             // Billing & Plans
             .service(handlers::list_plans)
             .service(handlers::get_my_plan)
