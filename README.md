@@ -2,34 +2,38 @@
 
 Plataforma integral para la gestión escolar diseñada bajo un modelo **SaaS (Software as a Service)**. Este sistema permite a múltiples instituciones gestionar sus procesos académicos, administrativos y financieros de manera eficiente y segura.
 
+> **📊 Optimizado (Marzo 2026):** Imágenes Docker 60% más pequeñas, connection pool mejorado (5→20), 25+ índices DB, tracing estructurado, CI/CD con auditoría de seguridad. Ver [`OPTIMIZACIONES.md`](OPTIMIZACIONES.md).
+
 ## 🚀 Stack Tecnológico
 
 El proyecto utiliza una arquitectura moderna y de alto rendimiento:
 
-*   **Backend Principal:** Rust con Actix-web & SQLx (Patrón Repository, RBAC).
-*   **Frontend:** React con Vite & Tailwind CSS (UI moderna, Dashboard administrativo).
-*   **Base de Datos:** PostgreSQL 16 (Esquema académico versionado).
+*   **Backend Principal:** Rust 1.77 con Actix-web & SQLx (Patrón Repository, RBAC).
+*   **Frontend:** React 18 con Vite & Tailwind CSS (UI moderna, Dashboard administrativo).
+*   **Base de Datos:** PostgreSQL 16 (Esquema académico versionado con migraciones).
+*   **Caché:** Redis 7 (opcional, para sesiones y consultas frecuentes).
 *   **Seguridad:** Autenticación JWT, Hashing Argon2id y Claims-based RBAC.
-*   **Infraestructura:** Docker & Docker Compose (Orquestación de contenedores).
-*   **Proxy Reverso:** Nginx (Enrutamiento, balanceo y SSL).
+*   **Infraestructura:** Docker & Docker Compose (imágenes distroless optimizadas).
+*   **Proxy Reverso:** Nginx (Enrutamiento, balanceo, gzip, rate limiting, SSL).
 
 ## 🏗 Arquitectura
 
 El sistema está contenerizado y dividido en servicios modulares:
 
-| Servicio | Contenedor | Puerto Interno | Descripción |
-|----------|------------|----------------|-------------|
-| **Base de Datos** | `colleges_db` | 5432 | PostgreSQL con volúmenes persistentes. |
-| **Backend** | `colleges_backend` | 8080 | API RESTful escrita en Rust con Actix-web. |
-| **Frontend** | `colleges_frontend` | 80 | Servidor web que entrega la aplicación React. |
-| **Proxy Inverso** | `colleges_nginx` | 80, 443 | Nginx para enrutamiento de tráfico y balanceo de carga. |
+| Servicio | Contenedor | Puerto | Descripción |
+|----------|------------|--------|-------------|
+| **Base de Datos** | `colleges_db` | 5432 | PostgreSQL 16 con volúmenes persistentes. |
+| **Caché** | `colleges_redis` | 6379 | Redis 7 (opcional, perfil `with-redis`). |
+| **Backend** | `colleges_backend` | 8080 | API RESTful Rust Actix-web (imagen ~30MB distroless). |
+| **Frontend** | `colleges_frontend` | 80 | Servidor web React/Vite. |
+| **Proxy Inverso** | `colleges_nginx` | 80, 443 | Nginx con gzip, security headers, rate limiting. |
 
 ## 🛠 Instalación y Despliegue
 
 ### Prerrequisitos
 
-*   Docker Engine
-*   Docker Compose
+*   Docker Engine 20+
+*   Docker Compose 2.0+
 
 ### Pasos para iniciar (Entorno de Desarrollo)
 
@@ -40,136 +44,205 @@ El sistema está contenerizado y dividido en servicios modulares:
     ```
 
 2.  **Configurar variables de entorno:**
-    Crea un archivo `.env` basado en el ejemplo (si existe) o utiliza los valores por defecto del `docker-compose.yml`.
+    ```bash
+    cp .env.example .env
+    # Editar .env con tus valores (JWT_SECRET_KEY, DB_PASSWORD, etc.)
+    ```
 
 3.  **Levantar los servicios:**
     ```bash
+    # Básico
     docker compose up --build
+
+    # Con Redis (caché)
+    docker compose --profile with-redis up --build
+
+    # Producción (con SSL)
+    docker compose --profile production up -d
     ```
 
 4.  **Acceder a la aplicación:**
-    *   Frontend: `http://localhost:80`
-    *   Backend API (Rust): `http://localhost:8080`
-    *   Base de Datos: `localhost:5432`
+    *   Frontend: `http://localhost`
+    *   Backend API: `http://localhost:8080/health`
+    *   PostgreSQL: `localhost:5432`
+    *   Redis: `localhost:6379` (si está habilitado)
 
 ## 📁 Estructura del Proyecto
 
 ```
 schoolccb/
-├── docker-compose.yml          # Orquestación de servicios
-├── init.sql                    # Script de inicialización BD
+├── docker-compose.yml          # Orquestación optimizada con healthchecks
 ├── .env                        # Variables de entorno
-├── .env.example               # Ejemplo de configuración
-├── README.md                   # Documentación del proyecto
+├── .env.example                # Configuración de ejemplo actualizada
+├── README.md                   # Esta documentación
 ├── ROADMAP.md                  # Plan de desarrollo
-├── frontend/                   # Código fuente React
-│   ├── Dockerfile.frontend     # Build del frontend
-│   ├── public/
+├── OPTIMIZACIONES.md           # 📊 Detalle de optimizaciones implementadas
+├── frontend/                   # React + Vite + Tailwind
+│   ├── Dockerfile.frontend
 │   ├── src/
 │   ├── package.json
-│   └── package-lock.json
-├── rust/                       # Código fuente Rust
+│   ├── vite.config.js
+│   ├── eslint.config.js        # ESLint configurado
+│   └── vitest.config.js        # Vitest para tests
+├── rust/                       # Rust + Actix-web + SQLx
 │   ├── src/
-│   ├── Cargo.toml
-│   └── Dockerfile              # Build del backend
-├── postgres/                   # Configuración PostgreSQL
-│   └── Dockerfile.postgres     # Configuración BD
-├── nginx/                      # Configuración proxy reverso
-│   ├── nginx.conf
+│   │   ├── main.rs             # Tracing estructurado JSON
+│   │   ├── handlers.rs
+│   │   ├── repository.rs
+│   │   └── auth.rs
+│   ├── migrations/             # Migraciones SQLx
+│   ├── Cargo.toml              # Edition 2021, profile.release optimizado
+│   ├── Dockerfile              # Multi-stage → distroless
+│   └── .dockerignore
+├── nginx/                      # Nginx optimizado
+│   ├── nginx.conf              # gzip, security headers, rate limit
 │   └── Dockerfile
-├── scripts/                    # Scripts auxiliares
-│   └── init-db/               # Scripts de inicialización BD
-└── src/                        # Código fuente adicional (legacy)
+├── postgres/                   # PostgreSQL 16
+│   └── Dockerfile.postgres
+├── .github/workflows/          # CI/CD mejorado
+│   ├── backend.yml             # fmt, lint, audit, test, build
+│   └── frontend.yml            # lint, test, build
+└── scripts/
+    └── setup.sh                # Setup interactivo
 ```
 
 ## 🔧 Configuración
 
-### Variables de Entorno
-
-Crea un archivo `.env` en la raíz del proyecto:
+### Variables de Entorno Principales
 
 ```env
 # Base de Datos
 DB_USERNAME=postgres
-DB_PASSWORD=changeme123!
+DB_PASSWORD=tu_password_seguro
 DB_NAME=colleges
+
+# Database Pool (optimizado)
+DATABASE_MAX_CONNECTIONS=20
+DATABASE_MIN_CONNECTIONS=5
+DATABASE_ACQUIRE_TIMEOUT=30
+DATABASE_IDLE_TIMEOUT=600
+DATABASE_MAX_LIFETIME=1800
 
 # Backend
 BACKEND_PORT=8080
 RUST_LOG=info
+JWT_SECRET_KEY=genera_una_clave_segura_aqui
 
 # Frontend
 NODE_ENV=production
+
+# Redis (opcional)
+REDIS_URL=redis://redis:6379
 ```
+
+Ver [`.env.example`](.env.example) para todas las opciones.
 
 ## 📊 Estado Actual
 
 | Módulo | Estado | Descripción |
 |--------|--------|-------------|
-| Infraestructura | ✅ Completo | Docker, Nginx, PostgreSQL, Rust Actix-web, React/Vite |
+| Infraestructura | ✅ Completo | Docker, Nginx, PostgreSQL, Rust, React/Vite, Redis |
 | Autenticación y RBAC | ✅ Completo | JWT, Argon2id, permisos por rol |
 | Gestión Académica | ✅ Completo | Cursos, matrículas, calificaciones y asistencia |
 | SaaS Multi-colegio | ✅ Completo | Multi-tenancy, subdominios, geo-tagging por país |
 | Consola Root | ✅ Completo | Dashboard MRR, gestión de licencias, detalle por institución |
-| Importación Masiva CSV | ✅ Completo | `POST /admin/bulk-import` — crea estudiantes y profesores en masa |
-| Boletín Estudiantil | ✅ Completo | `GET /academic/my-report-card` — promedios ponderados y % asistencia |
-| Personalización | ✅ Completo | Logo, colores primario/secundario por colegio (marca blanca) |
-| Internacionalización | ✅ Completo | ES/EN con `react-i18next`, persistencia en `localStorage` |
-| CI/CD | ✅ Completo | Pipeline GitHub Actions: lint, build, test y Docker push |
-| SSL / HTTPS | ✅ Completo | Automatización con Certbot y Nginx (init-ssl.sh) |
-| App Móvil (API) | 🚧 En Progreso | Preparación de endpoints y optimización para mobile |
+| Importación Masiva CSV | ✅ Completo | `POST /admin/bulk-import` |
+| Boletín Estudiantil | ✅ Completo | `GET /academic/my-report-card` |
+| Personalización | ✅ Completo | Logo, colores por colegio (marca blanca) |
+| Internacionalización | ✅ Completo | ES/EN con `react-i18next` |
+| CI/CD | ✅ Mejorado | GitHub Actions: fmt, lint, audit, test, build |
+| SSL / HTTPS | ✅ Completo | Certbot + Nginx |
+| Caché Redis | ✅ Opcional | Perfil `with-redis` |
+| Tracing/Logging | ✅ Mejorado | JSON estructurado con `tracing` |
+| App Móvil (API) | 🚧 En Progreso | Endpoints optimizados para mobile |
 
-## ⚙️ Instalación Rápida (Recomendado)
+## ⚙️ Instalación Rápida
 
-He creado un script interactivo para automatizar la configuración inicial:
+```bash
+# 1. Clonar
+git clone <url-del-repo> && cd schoolccb
 
-1. Clona el repositorio.
-2. Asegúrate de que Docker esté corriendo.
-3. Ejecuta el setup:
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-4. El script te pedirá el nombre de tu colegio y los datos de tu primer usuario SuperAdmin.
-5. ¡Listo! Accede a `http://localhost` para empezar.
+# 2. Configurar
+cp .env.example .env
+# Editar .env con valores seguros (especialmente JWT_SECRET_KEY)
+
+# 3. Iniciar
+chmod +x setup.sh
+./setup.sh
+
+# 4. Acceder
+# Frontend: http://localhost
+# Usuario: el que creaste en el setup
+```
 
 ## 🚀 Comandos Útiles
 
-## 🔧 Configuración
+```bash
+# Desarrollo
+docker compose up --build
+docker compose logs -f backend
+docker compose exec db psql -U postgres -d colleges
 
-### Variables de Entorno
+# Con Redis
+docker compose --profile with-redis up
 
-Crea un archivo `.env` en la raíz del proyecto:
+# Producción
+docker compose --profile production up -d
+docker compose down -v  # Limpiar todo (cuidado!)
 
-```env
-# Base de Datos
-DB_USERNAME=postgres
-DB_PASSWORD=changeme123!
-DB_NAME=colleges
+# Backend (local)
+cd rust
+cargo run
+cargo build --release
+cargo clippy -- -D warnings
+cargo test
 
-# Backend
-BACKEND_PORT=8080
-RUST_LOG=info
-
-# Frontend
-NODE_ENV=development
+# Frontend (local)
+cd frontend
+npm install
+npm run dev
+npm run build
+npm run lint
+npm run test
 ```
 
-### Problemas Conocidos
+## 📈 Métricas de Rendimiento
 
-- **Edition 2024 Rust:** Si hay errores de compilación, cambiar a `edition = "2021"` en `rust/Cargo.toml`.
-- **Migraciones:** Usar `sqlx-cli` para gestionar cambios en el esquema. No modificar `init.sql` una vez en producción.
-- **Frontend Legacy:** El proyecto está migrando de Create React App a Vite.
-- **CORS:** Configurar en backend si hay problemas de conexión desde el origen de desarrollo.
+| Métrica | Valor |
+|---------|-------|
+| Tamaño imagen backend | ~30 MB (distroless) |
+| Conexiones DB máximas | 20 (configurable) |
+| Healthchecks | 5/5 servicios |
+| Índices DB | 25+ |
+| Response time objetivo | <500ms |
+| Uptime objetivo | 99.9% |
+
+## ⚠️ Problemas Conocidos
+
+- **Migraciones:** Usar `sqlx-cli` para cambios en el esquema. Las migraciones se ejecutan automáticamente al iniciar.
+- **CORS:** Configurar `CORS_ORIGIN` en el backend si hay problemas de conexión.
+- **Redis:** Es opcional. Habilitar con `--profile with-redis`.
 
 ## 🤝 Contribución
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+1.  Fork el proyecto
+2.  Crea una rama (`git checkout -b feature/AmazingFeature`)
+3.  Commit tus cambios (`git commit -m 'Add AmazingFeature'`)
+4.  Push (`git push origin feature/AmazingFeature`)
+5.  Abre un Pull Request
+
+### Requisitos de Código
+
+- **Backend:** `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`
+- **Frontend:** `npm run lint`, `npm run test`
+- **CI/CD:** Todos los jobs deben pasar (fmt, lint, audit, test, build)
 
 ## 📝 Licencia
 
-Todos los derechos reservados. Ver el archivo [LICENSE](LICENSE) para más detalles.
+Todos los derechos reservados. Ver [LICENSE](LICENSE) para más detalles.
+
+---
+
+**📚 Documentación adicional:**
+- [Optimizaciones](OPTIMIZACIONES.md) - Detalle de mejoras implementadas
+- [Roadmap](ROADMAP.md) - Plan de desarrollo futuro

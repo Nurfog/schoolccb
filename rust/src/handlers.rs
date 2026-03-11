@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::io::Cursor;
-use tracing::{debug, error};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 #[derive(Deserialize)]
@@ -92,27 +92,39 @@ pub async fn login(repo: web::Data<Repository>, body: web::Json<LoginRequest>) -
                 let school = repo.get_school_by_id(school_id).await.ok().flatten();
 
                 match create_jwt(user.id, school_id, is_system_admin, &role_name, permissions) {
-                    Ok(token) => HttpResponse::Ok().json(json!({
-                        "token": token,
-                        "user": {
-                            "id": user.id,
-                            "name": user.name,
-                            "email": user.email,
-                            "role": role_name,
-                            "is_system_admin": is_system_admin
-                        },
-                        "school": school
-                    })),
-                    Err(_) => HttpResponse::InternalServerError()
-                        .json(json!({"error": "Failed to create token"})),
+                    Ok(token) => {
+                        info!(user_id = %user.id, email = %user.email, role = %role_name, "User logged in successfully");
+                        HttpResponse::Ok().json(json!({
+                            "token": token,
+                            "user": {
+                                "id": user.id,
+                                "name": user.name,
+                                "email": user.email,
+                                "role": role_name,
+                                "is_system_admin": is_system_admin
+                            },
+                            "school": school
+                        }))
+                    },
+                    Err(e) => {
+                        error!(error = %e, "Failed to create JWT token");
+                        HttpResponse::InternalServerError()
+                            .json(json!({"error": "Failed to create token"}))
+                    }
                 }
             } else {
-                debug!("Password verification failed for user: {}", body.email);
+                warn!(email = %body.email, "Password verification failed");
                 HttpResponse::Unauthorized().json(json!({"error": "Invalid credentials"}))
             }
         }
-        Ok(None) => HttpResponse::Unauthorized().json(json!({"error": "Invalid credentials"})),
-        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+        Ok(None) => {
+            debug!(email = %body.email, "User not found");
+            HttpResponse::Unauthorized().json(json!({"error": "Invalid credentials"}))
+        }
+        Err(e) => {
+            error!(error = %e, email = %body.email, "Database error during login");
+            HttpResponse::InternalServerError().json(json!({"error": e.to_string()}))
+        }
     }
 }
 
@@ -600,8 +612,14 @@ pub async fn health(db_pool: web::Data<Pool<Postgres>>) -> HttpResponse {
     let db_status = sqlx::query("SELECT 1").execute(db_pool.get_ref()).await;
 
     let (message, db_connected) = match db_status {
-        Ok(_) => ("Server is running and DB is connected".to_string(), true),
-        Err(e) => (format!("Server is running but DB error: {}", e), false),
+        Ok(_) => {
+            info!("Health check passed - database connected");
+            ("Server is running and DB is connected".to_string(), true)
+        }
+        Err(e) => {
+            error!(error = %e, "Health check - database connection failed");
+            (format!("Server is running but DB error: {}", e), false)
+        }
     };
 
     HttpResponse::Ok().json(HealthResponse {

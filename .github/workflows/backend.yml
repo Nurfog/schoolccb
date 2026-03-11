@@ -2,20 +2,34 @@ name: Backend CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - 'rust/**'
       - '.github/workflows/backend.yml'
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - 'rust/**'
       - '.github/workflows/backend.yml'
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
 
 jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Check formatting
+        working-directory: ./rust
+        run: cargo fmt --all -- --check
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -25,24 +39,62 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli
       - name: Run Clippy
         working-directory: ./rust
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
-    name: Test
+  audit:
+    name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Run cargo audit
+        working-directory: ./rust
+        run: cargo audit || echo "Warning: cargo-audit found vulnerabilities (non-blocking)"
+        continue-on-error: true
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_colleges
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_colleges
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run migrations
+        run: |
+          cd rust
+          cargo install sqlx-cli
+          sqlx migrate run
       - name: Run tests
         working-directory: ./rust
-        run: cargo test
+        run: cargo test --all-features
 
   build:
     name: Build
     runs-on: ubuntu-latest
+    needs: [fmt, lint, test]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
@@ -50,3 +102,9 @@ jobs:
       - name: Build release
         working-directory: ./rust
         run: cargo build --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: colegio-backend
+          path: rust/target/release/colegio-backend
+          retention-days: 7

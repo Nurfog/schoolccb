@@ -6,25 +6,78 @@ use colegio_backend::repository::Repository;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
+use std::time::Duration;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
+    // Initialize tracing subscriber with JSON formatting for production
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,sqlx=warn,actix_web=info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer().json())
+        .init();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    
+    // Configure connection pool with production-ready settings
+    let max_connections = env::var("DATABASE_MAX_CONNECTIONS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(20u32);
+    
+    let min_connections = env::var("DATABASE_MIN_CONNECTIONS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(5u32);
+    
+    let acquire_timeout = env::var("DATABASE_ACQUIRE_TIMEOUT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(30u64);
+    
+    let idle_timeout = env::var("DATABASE_IDLE_TIMEOUT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(600u64);
+    
+    let max_lifetime = env::var("DATABASE_MAX_LIFETIME")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1800u64);
+
+    tracing::info!(
+        max_connections = max_connections,
+        min_connections = min_connections,
+        acquire_timeout = acquire_timeout,
+        idle_timeout = idle_timeout,
+        max_lifetime = max_lifetime,
+        "Configuring database connection pool"
+    );
+
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(max_connections)
+        .min_connections(min_connections)
+        .acquire_timeout(Duration::from_secs(acquire_timeout))
+        .idle_timeout(Duration::from_secs(idle_timeout))
+        .max_lifetime(Duration::from_secs(max_lifetime))
         .connect(&database_url)
         .await
         .expect("Failed to create pool");
 
+    tracing::info!("Database connection pool established");
+
     // Ejecutar migraciones automáticamente
-    println!("Running database migrations...");
+    tracing::info!("Running database migrations...");
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .map_err(|e: sqlx::migrate::MigrateError| std::io::Error::other(e.to_string()))?;
+    tracing::info!("Database migrations completed successfully");
 
     let repo = Repository::new(pool.clone());
 
@@ -33,7 +86,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or_else(|_| "8080".to_string());
     let bind_addr = format!("0.0.0.0:{}", port);
 
-    println!("Starting server on {}", bind_addr);
+    tracing::info!(address = %bind_addr, "Starting server");
 
     let origins = env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost".to_string());
     let allowed_origins: Vec<String> = origins.split(',').map(|s| s.to_string()).collect();

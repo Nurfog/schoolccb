@@ -1,6 +1,17 @@
+# ============================================
+# Dockerfile Optimizado - Backend Rust
+# ============================================
+
 # Etapa 1: Construcción
-FROM rust:latest as builder
+FROM rust:1.77-slim-bookworm as builder
 WORKDIR /app/backend
+
+# Instalar dependencias necesarias para la compilación
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copia Cargo.toml y Cargo.lock (si existe)
 COPY Cargo.toml ./
@@ -21,21 +32,22 @@ COPY migrations ./migrations
 # Compila el código real
 RUN cargo build --release
 
-# Etapa 2: Runtime
-FROM debian:bookworm-slim
+# Etapa 2: Runtime con imagen minimalista
+FROM gcr.io/distroless/cc-debian12
 
-# Instala libpq (dependencia para PostgreSQL)
-RUN apt-get update && \
-    apt-get install -y libpq5 ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+# Copiar certificados SSL para conexiones HTTPS
+COPY --from=debian:bookworm-slim /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /app
 
 # Copia los binarios compilados
 COPY --from=builder /app/backend/target/release/colegio-backend /app/colegio-backend
-COPY --from=builder /app/backend/target/release/bootstrap /app/bootstrap
 
-# Expone el puerto
+# Configurar variables de entorno
+ENV RUST_LOG=info
+ENV PORT=8080
+
+# Exponer el puerto
 EXPOSE 8080
 
 # Comando de inicio

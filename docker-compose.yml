@@ -1,8 +1,8 @@
 # docker-compose.yml - Sistema de Administración de Colegios
-# Configuración optimizada con Rust, Node.js, Docker y PostgreSQL 18.3
+# Configuración optimizada con Rust, Node.js, Docker y PostgreSQL 16
 
 services:
-  # Servicio de Base de Datos - PostgreSQL 18.3 en Debian Trixie Slim
+  # Servicio de Base de Datos - PostgreSQL 16
   db:
     build:
       context: .
@@ -17,9 +17,10 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "${DB_USERNAME:-postgres}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-colleges}"]
       interval: 10s
       retries: 5
+      start_period: 10s
       timeout: 5s
     networks:
       - colleges_network
@@ -36,6 +37,38 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    restart: unless-stopped
+
+  # Servicio Redis para caching (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: colleges_redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+      timeout: 5s
+    networks:
+      - colleges_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    profiles:
+      - with-redis
 
   # Servicio Backend en Rust
   backend:
@@ -44,10 +77,20 @@ services:
       dockerfile: Dockerfile
     container_name: colleges_backend
     environment:
-      RUST_LOG: info
+      RUST_LOG: ${RUST_LOG:-info}
       DATABASE_URL: postgres://${DB_USERNAME:-postgres}:${DB_PASSWORD:-changeme123!}@db:5432/${DB_NAME:-colleges}
       PORT: ${BACKEND_PORT:-8080}
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
+      # Database pool configuration
+      DATABASE_MAX_CONNECTIONS: ${DATABASE_MAX_CONNECTIONS:-20}
+      DATABASE_MIN_CONNECTIONS: ${DATABASE_MIN_CONNECTIONS:-5}
+      DATABASE_ACQUIRE_TIMEOUT: ${DATABASE_ACQUIRE_TIMEOUT:-30}
+      DATABASE_IDLE_TIMEOUT: ${DATABASE_IDLE_TIMEOUT:-600}
+      DATABASE_MAX_LIFETIME: ${DATABASE_MAX_LIFETIME:-1800}
+      # JWT
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-changeme_secure_key_2024}
+      # Redis (opcional)
+      REDIS_URL: redis://redis:6379
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
@@ -55,6 +98,12 @@ services:
         condition: service_healthy
     networks:
       - colleges_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 3
+      start_period: 40s
+      timeout: 10s
     deploy:
       resources:
         limits:
@@ -68,6 +117,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    restart: unless-stopped
 
   # Servicio Frontend (compilado)
   frontend:
@@ -76,9 +126,16 @@ services:
       dockerfile: frontend/Dockerfile.frontend
     container_name: colleges_frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - colleges_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
     deploy:
       resources:
         limits:
@@ -89,6 +146,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    restart: unless-stopped
 
   # Servicio Proxy Inverso Nginx
   nginx:
@@ -98,16 +156,24 @@ services:
     container_name: colleges_nginx
     ports:
       - "80:80"
-      - "443:443" # Para HTTPS en producción
+      - "443:443"
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks:
       - colleges_network
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
     deploy:
       resources:
         limits:
@@ -118,6 +184,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    restart: unless-stopped
 
   # Certbot para renovación automática de certificados SSL
   certbot:
@@ -129,11 +196,16 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - colleges_network
+    profiles:
+      - production
 
 volumes:
   postgres_data:
     driver: local
     name: colleges_postgres_data
+  redis_data:
+    driver: local
+    name: colleges_redis_data
 
 networks:
   colleges_network:
