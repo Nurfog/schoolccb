@@ -1,9 +1,10 @@
 use crate::HealthResponse;
 use crate::auth::{Claims, create_jwt, hash_password, verify_password};
+use crate::features::{FeatureStatus, FeatureType, PlanType};
 use crate::models::User;
 use crate::repository::Repository;
 use actix_multipart::Multipart;
-use actix_web::{HttpResponse, get, post, put, web};
+use actix_web::{HttpRequest, HttpResponse, get, post, put, web};
 use futures::TryStreamExt;
 use serde::Deserialize;
 use serde_json::json;
@@ -749,4 +750,199 @@ pub async fn update_branding(
             HttpResponse::InternalServerError().json(json!({"error": "Database error"}))
         }
     }
+}
+
+// ============================================
+// Planes y Features Handlers
+// ============================================
+
+/// Obtener todos los planes disponibles con sus features
+#[get("/billing/plans")]
+pub async fn list_plans(_claims: Claims) -> HttpResponse {
+    HttpResponse::Ok().json(PlanType::all_plans())
+}
+
+/// Obtener el plan actual del colegio
+#[get("/billing/my-plan")]
+pub async fn get_my_plan(repo: web::Data<Repository>, claims: Claims) -> HttpResponse {
+    let school_id = match Uuid::parse_str(&claims.school_id) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().json(json!({"error": "Invalid school ID"})),
+    };
+
+    match repo.get_license_by_school(school_id).await {
+        Ok(license) => {
+            let plan: PlanType = license.plan_type.parse().unwrap_or(PlanType::Basic);
+            let plan_info = plan.get_plan_info();
+            
+            // Obtener features con estado de uso
+            let mut features_status = Vec::new();
+            
+            // Ejemplo: contar estudiantes
+            if let Ok(students) = repo.list_students(school_id).await {
+                let student_count = students.len() as i64;
+                let max_students = plan.max_students().map(|m| m as i64);
+                
+                features_status.push(FeatureStatus {
+                    feature: FeatureType::AcademicCore,
+                    enabled: true,
+                    limit: max_students,
+                    used: Some(student_count),
+                });
+            }
+            
+            HttpResponse::Ok().json(json!({
+                "plan": plan_info,
+                "license": {
+                    "status": license.status,
+                    "expiry_date": license.expiry_date,
+                    "auto_renew": license.auto_renew,
+                    "plan_type": license.plan_type
+                },
+                "features": features_status
+            }))
+        }
+        Err(sqlx::Error::RowNotFound) => {
+            // No hay licencia, devolver plan básico por defecto
+            let plan = PlanType::Basic;
+            HttpResponse::Ok().json(json!({
+                "plan": plan.get_plan_info(),
+                "license": {
+                    "status": "none",
+                    "plan_type": "basic"
+                },
+                "message": "No license found, using basic plan"
+            }))
+        }
+        Err(e) => {
+            error!("Error getting plan: {}", e);
+            HttpResponse::InternalServerError().json(json!({"error": e.to_string()}))
+        }
+    }
+}
+
+// ============================================
+// Stripe Handlers (Opcional)
+// ============================================
+
+#[derive(Deserialize)]
+pub struct CreateCheckoutRequest {
+    pub plan: String,
+    pub billing_cycle: String, // 'monthly' o 'yearly'
+}
+
+/// Crear sesión de checkout de Stripe
+#[post("/billing/checkout")]
+pub async fn create_checkout(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    body: web::Json<CreateCheckoutRequest>,
+) -> HttpResponse {
+    let school_id = match Uuid::parse_str(&claims.school_id) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().json(json!({"error": "Invalid school ID"})),
+    };
+
+    // Verificar Stripe API key
+    let stripe_key = match std::env::var("STRIPE_SECRET_KEY") {
+        Ok(key) if !key.is_empty() => key,
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(json!({
+                "error": "Stripe no está configurado",
+                "message": "Contacta al administrador para habilitar pagos"
+            }));
+        }
+        _ => {
+            return HttpResponse::InternalServerError().json(json!({
+                "error": "Stripe no está configurado",
+                "message": "STRIPE_SECRET_KEY no está definida"
+            }));
+        }
+    };
+
+    // Precios por plan
+    let prices = match body.plan.as_str() {
+        "basic" => if body.billing_cycle == "yearly" { 490 } else { 49 },
+        "premium" => if body.billing_cycle == "yearly" { 990 } else { 99 },
+        "enterprise" => if body.billing_cycle == "yearly" { 2490 } else { 249 },
+        _ => return HttpResponse::BadRequest().json(json!({"error": "Plan inválido"})),
+    };
+
+    // En producción, aquí crearías la sesión de Stripe
+    // Por ahora, devolvemos una respuesta simulada
+    info!(
+        user_id = %claims.sub,
+        school_id = %school_id,
+        plan = %body.plan,
+        cycle = %body.billing_cycle,
+        price = prices,
+        "Checkout request received"
+    );
+
+    // TODO: Integración real con Stripe
+    // let client = stripe::Client::new(&stripe_key);
+    // let session = stripe::Checkout::Session::create(
+    //     &client,
+    //     stripe::CreateCheckoutSession {
+    //         // ... configuración
+    //     },
+    // ).await?;
+
+    HttpResponse::Ok().json(json!({
+        "message": "Checkout iniciado",
+        "plan": body.plan,
+        "billing_cycle": body.billing_cycle,
+        "price_usd": prices,
+        "checkout_url": "https://checkout.stripe.com/csk_test_...", // URL simulada
+        "note": "Configura STRIPE_SECRET_KEY para habilitar pagos reales"
+    }))
+}
+
+/// Webhook de Stripe para eventos de pago
+#[post("/billing/stripe-webhook")]
+pub async fn stripe_webhook(
+    repo: web::Data<Repository>,
+    body: String,
+    req: HttpRequest,
+) -> HttpResponse {
+    // Verificar firma de Stripe
+    let stripe_signature = req.headers()
+        .get("Stripe-Signature")
+        .and_then(|h| h.to_str().ok());
+
+    if stripe_signature.is_none() {
+        return HttpResponse::BadRequest().json(json!({"error": "Missing Stripe signature"}));
+    }
+
+    let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+    
+    // TODO: Verificar firma con stripe::Webhook::construct_event
+    // Por ahora, procesamos el evento directamente
+    
+    info!("Stripe webhook received");
+    
+    // Parsear evento
+    if let Ok(event) = serde_json::from_str::<serde_json::Value>(&body) {
+        let event_type = event["type"].as_str().unwrap_or("unknown");
+        
+        match event_type {
+            "checkout.session.completed" => {
+                // Actualizar licencia después de pago exitoso
+                info!("Payment completed");
+                // TODO: Actualizar saas_licenses con nuevo plan
+            }
+            "customer.subscription.updated" => {
+                info!("Subscription updated");
+            }
+            "invoice.payment_failed" => {
+                warn!("Payment failed");
+                // TODO: Notificar al usuario
+            }
+            _ => {
+                debug!("Unhandled event type: {}", event_type);
+            }
+        }
+    }
+
+    HttpResponse::Ok().json(json!({"status": "ok"}))
 }

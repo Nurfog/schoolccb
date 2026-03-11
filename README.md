@@ -154,6 +154,7 @@ Ver [`.env.example`](.env.example) para todas las opciones.
 | SSL / HTTPS | ✅ Completo | Certbot + Nginx |
 | Caché Redis | ✅ Opcional | Perfil `with-redis` |
 | Tracing/Logging | ✅ Mejorado | JSON estructurado con `tracing` |
+| **Módulos Premium** | ✅ Implementado | 3 planes (Basic, Premium, Enterprise) con feature flags |
 | App Móvil (API) | 🚧 En Progreso | Endpoints optimizados para mobile |
 
 ## ⚙️ Instalación Rápida
@@ -244,5 +245,6 @@ Todos los derechos reservados. Ver [LICENSE](LICENSE) para más detalles.
 ---
 
 **📚 Documentación adicional:**
-- [Optimizaciones](OPTIMIZACIONES.md) - Detalle de mejoras implementadas
+- [Optimizaciones](OPTIMIZACIONES.md) - Detalle de mejoras técnicas implementadas
 - [Roadmap](ROADMAP.md) - Plan de desarrollo futuro
+- [Módulos Premium](MODULOS_PREMIUM.md) - Planes y features disponibles

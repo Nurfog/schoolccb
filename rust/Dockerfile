@@ -3,7 +3,8 @@
 # ============================================
 
 # Etapa 1: Construcción
-FROM rust:1.77-slim-bookworm as builder
+# Usamos Rust 1.88 que soporta todas las dependencias modernas
+FROM rust:1.88-bookworm as builder
 WORKDIR /app/backend
 
 # Instalar dependencias necesarias para la compilación
@@ -13,18 +14,17 @@ RUN apt-get update && \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copia Cargo.toml y Cargo.lock (si existe)
+# Copia solo Cargo.toml
 COPY Cargo.toml ./
-COPY Cargo.lock* ./
 
 # Crea una estructura dummy para cachear las dependencias
+# Cargo generará el Cargo.lock automáticamente
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release
 
-# Limpia y copia el código real
-RUN rm -rf src && \
-    rm -rf target/release/deps/colegio_backend*
+# Limpia el código dummy
+RUN rm -rf src
 
 COPY src ./src
 COPY migrations ./migrations
@@ -36,7 +36,7 @@ RUN cargo build --release
 FROM gcr.io/distroless/cc-debian12
 
 # Copiar certificados SSL para conexiones HTTPS
-COPY --from=debian:bookworm-slim /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /app
 

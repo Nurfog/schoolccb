@@ -4,6 +4,10 @@ use sqlx::FromRow;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+// ============================================
+// Modelos del Sistema
+// ============================================
+
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct School {
     pub id: Uuid,

@@ -1,4 +1,4 @@
-use crate::models::{Course, School, User};
+use crate::models::{Course, SaasLicense, School, User};
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres, Row};
 use std::collections::HashMap;
@@ -157,6 +157,19 @@ impl Repository {
     }
 
     // --- SaaS Enterprise Layer ---
+
+    /// Obtener la licencia de un colegio específico
+    pub async fn get_license_by_school(
+        &self,
+        school_id: Uuid,
+    ) -> Result<SaasLicense, sqlx::Error> {
+        sqlx::query_as::<_, SaasLicense>(
+            "SELECT * FROM saas_licenses WHERE school_id = $1 ORDER BY expiry_date DESC LIMIT 1"
+        )
+        .bind(school_id)
+        .fetch_one(&self.pool)
+        .await
+    }
 
     pub async fn get_saas_stats(&self) -> Result<crate::models::SaasDashboardStats, sqlx::Error> {
         let total_schools = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM schools")

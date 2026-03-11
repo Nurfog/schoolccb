@@ -141,6 +141,11 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::bulk_import)
             .service(handlers::update_branding)
             .service(handlers::std_upsert_license)
+            // Billing & Plans
+            .service(handlers::list_plans)
+            .service(handlers::get_my_plan)
+            .service(handlers::create_checkout)
+            .service(handlers::stripe_webhook)
     })
     .bind(&bind_addr)?
     .run()

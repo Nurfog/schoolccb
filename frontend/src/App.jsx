@@ -5,6 +5,7 @@ import Login from './Login';
 import Modal from './Modal';
 import BulkImport from './BulkImport';
 import BrandingConfig from './BrandingConfig';
+import Billing from './Billing';
 import LanguageSwitcher from './LanguageSwitcher';
 import { CourseForm, TeacherForm, StudentForm, EnrollmentForm, GradeForm, AttendanceForm, SchoolForm, SchoolEditForm, LicenseForm } from './Forms';
 
@@ -262,6 +263,7 @@ function App() {
                   <>
                     <SidebarItem icon="📤" label={t('sidebar.import')} active={activeTab === 'bulk_import'} onClick={() => setActiveTab('bulk_import')} />
                     <SidebarItem icon="🎨" label={t('sidebar.branding')} active={activeTab === 'branding'} onClick={() => setActiveTab('branding')} />
+                    <SidebarItem icon="💳" label="Planes" active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} />
                   </>
                 )}
 
@@ -893,6 +895,11 @@ function App() {
               }}
             />
           </div>
+        )}
+
+        {/* Billing View */}
+        {activeTab === 'billing' && user.role === 'admin' && (
+          <Billing />
         )}
       </main>
 

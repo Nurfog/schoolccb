@@ -99,7 +99,7 @@ services:
     networks:
       - colleges_network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 30s
       retries: 3
       start_period: 40s

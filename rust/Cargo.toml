@@ -31,6 +31,9 @@ rust_decimal = { version = "1", features = ["serde-float"] }
 # HTTP client
 reqwest = { version = "0.12", features = ["json"] }
 
+# Stripe (opcional - para producción)
+# stripe = { version = "0.22", optional = true }
+
 # Environment
 dotenvy = "0.15"
 
@@ -48,6 +51,8 @@ uuid = { version = "1.11", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 argon2 = "0.5"
 jsonwebtoken = "9"
+strum = "0.26"
+strum_macros = "0.26"
 
 # Redis (opcional, para caching)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
