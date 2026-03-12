@@ -72,9 +72,11 @@ El sistema está contenerizado y dividido en servicios modulares:
 ```
 schoolccb/
 ├── docker-compose.yml          # Orquestación optimizada con healthchecks
-├── .env                        # Variables de entorno
+├── .env                        # Variables de entorno (producción)
 ├── .env.example                # Configuración de ejemplo actualizada
+├── .env.production             # Plantilla para producción
 ├── README.md                   # Esta documentación
+├── SEGURIDAD.md                # 🔒 Guía de seguridad y despliegue
 ├── ROADMAP.md                  # Plan de desarrollo
 ├── OPTIMIZACIONES.md           # 📊 Detalle de optimizaciones implementadas
 ├── frontend/                   # React + Vite + Tailwind
@@ -103,7 +105,8 @@ schoolccb/
 │   ├── backend.yml             # fmt, lint, audit, test, build
 │   └── frontend.yml            # lint, test, build
 └── scripts/
-    └── setup.sh                # Setup interactivo
+    ├── setup.sh                # Setup interactivo
+    └── generate-secrets.sh     # 🔒 Generador de secretos seguros
 ```
 
 ## 🔧 Configuración
@@ -112,8 +115,8 @@ schoolccb/
 
 ```env
 # Base de Datos
-DB_USERNAME=postgres
-DB_PASSWORD=tu_password_seguro
+DB_USERNAME=admin
+DB_PASSWORD=<generar_con_script>
 DB_NAME=colleges
 
 # Database Pool (optimizado)
@@ -126,7 +129,10 @@ DATABASE_MAX_LIFETIME=1800
 # Backend
 BACKEND_PORT=8080
 RUST_LOG=info
-JWT_SECRET_KEY=genera_una_clave_segura_aqui
+
+# Autenticación
+JWT_SECRET_KEY=<generar_con_script>
+SESSION_SECRET=<generar_con_script>
 
 # Frontend
 NODE_ENV=production
@@ -135,7 +141,13 @@ NODE_ENV=production
 REDIS_URL=redis://redis:6379
 ```
 
-Ver [`.env.example`](.env.example) para todas las opciones.
+> 🔒 **Importante:** Usa el script `./scripts/generate-secrets.sh` para generar secretos seguros automáticamente.
+
+Ver [`.env.example`](.env.example) para todas las opciones o [`.env.production`](.env.production) para la plantilla de producción.
+
+### 🔒 Seguridad
+
+Para una guía completa de seguridad y despliegue, ver [`SEGURIDAD.md`](SEGURIDAD.md).
 
 ## 📊 Estado Actual
 
