@@ -194,16 +194,11 @@ print_info "Creando usuario administrador..."
 # Esperar un poco más para que el backend esté completamente listo
 sleep 5
 
-# Obtener credenciales de la DB desde docker-compose
-DB_USER=$(docker compose config | grep POSTGRES_USER | awk -F= '{print $2}' | tr -d ' ' || echo "user")
-DB_PASSWORD=$(docker compose config | grep POSTGRES_PASSWORD | awk -F= '{print $2}' | tr -d ' ' || echo "password")
-DB_NAME=$(docker compose config | grep POSTGRES_DB | awk -F= '{print $2}' | tr -d ' ' || echo "colleges")
-
-if [ -z "$DB_USER" ]; then
-    DB_USER="user"
-    DB_PASSWORD="password"
-    DB_NAME="colleges"
-fi
+# Obtener credenciales de la DB desde .env
+source .env 2>/dev/null || true
+DB_USER="${DB_USERNAME:-admin}"
+DB_PASSWORD="${DB_PASSWORD:-password}"
+DB_NAME="${DB_NAME:-colegios_main}"
 
 print_info "Usando DB: ${DB_NAME}, Usuario: ${DB_USER}"
 
@@ -359,11 +354,13 @@ echo "==============================================="
 # ============================================
 setup_root_role() {
     print_info "Configurando rol Root y permisos SaaS..."
-    
-    DB_USER="user"
-    DB_PASSWORD="password"
-    DB_NAME="colleges"
-    
+
+    # Obtener credenciales desde .env
+    source .env 2>/dev/null || true
+    DB_USER="${DB_USERNAME:-admin}"
+    DB_PASSWORD="${DB_PASSWORD:-password}"
+    DB_NAME="${DB_NAME:-colegios_main}"
+
     docker exec -e PGPASSWORD="${DB_PASSWORD}" -i colleges_db psql -U "${DB_USER}" -d "${DB_NAME}" -c "
     -- Crear rol root si no existe
     INSERT INTO roles (id, name, description)
