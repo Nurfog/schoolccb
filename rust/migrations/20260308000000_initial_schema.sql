@@ -6,6 +6,11 @@ CREATE TABLE IF NOT EXISTS schools (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     subdomain VARCHAR(100) UNIQUE NOT NULL,
+    country_id INTEGER, -- REFERENCES countries(id) -- Se agrega después
+    is_system_admin BOOLEAN DEFAULT FALSE, -- TRUE para colegio sistema (root)
+    logo_url TEXT,
+    primary_color VARCHAR(50),
+    secondary_color VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -13,7 +18,7 @@ CREATE TABLE IF NOT EXISTS schools (
 -- Tabla de Roles
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL, -- 'admin', 'profesor', 'alumno', 'padre'
+    name VARCHAR(50) UNIQUE NOT NULL, -- 'admin', 'profesor', 'alumno', 'padre', 'root'
     description TEXT
 );
 
@@ -31,21 +36,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Insertar Roles por defecto
 INSERT INTO roles (name, description) VALUES
+('root', 'Dueño de la plataforma - Acceso total'),
 ('admin', 'Administrador del sistema o del colegio'),
 ('profesor', 'Docente encargado de impartir materias'),
 ('alumno', 'Estudiante de la institución'),
 ('padre', 'Padre o tutor legal del alumno')
 ON CONFLICT (name) DO NOTHING;
 
--- Insertar Colegio de Prueba
-INSERT INTO schools (name, subdomain) 
-VALUES ('Colegio Central de Bogotá', 'ccb')
-ON CONFLICT (subdomain) DO NOTHING;
-
--- Insertar Usuario Administrador de Prueba (password: admin123)
--- Nota: En producción las contraseñas DEBEN estar hasheadas correctamente.
-INSERT INTO users (school_id, role_id, name, email, password_hash)
-SELECT id, (SELECT id FROM roles WHERE name = 'admin'), 'Admin CCB', 'admin@ccb.edu.co', '$argon2id$v=19$m=4096,t=3,p=1$c29tZXNhbHQ$i769B7jI77yXqV6N7z6w7w' 
-FROM schools WHERE subdomain = 'ccb'
-LIMIT 1
-ON CONFLICT (email) DO NOTHING;
+-- NO insertar colegio por defecto
+-- Cada colegio se crea manualmente desde la sistema

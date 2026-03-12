@@ -49,6 +49,59 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [newCountry, setNewCountry] = useState({ name: '', code: '' });
 
+  // Variables de entorno (para la vista de configuración)
+  const PLATFORM_NAME = 'SchoolCCB';
+  const PLATFORM_SUPPORT_EMAIL = 'soporte@schoolccb.com';
+  const PLATFORM_SALES_EMAIL = 'ventas@schoolccb.com';
+  const SMTP_ENABLED = false;
+  const SMTP_HOST = '';
+  const SMTP_FROM_EMAIL = '';
+  const STRIPE_ENABLED = false;
+  const NODE_ENV = 'production';
+
+  // Estados para configuración de branding
+  const [platformLogo, setPlatformLogo] = useState('');
+  const [platformFavicon, setPlatformFavicon] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [platformConfig, setPlatformConfig] = useState(null);
+
+  // Cargar configuración de plataforma al iniciar
+  useEffect(() => {
+    const loadPlatformConfig = async () => {
+      try {
+        const config = await api.get('/admin/platform-settings');
+        setPlatformConfig(config);
+
+        // Aplicar logo si existe
+        if (config.platform_logo && config.platform_logo.trim() !== '') {
+          setPlatformLogo(config.platform_logo);
+        }
+
+        // Aplicar favicon si existe
+        if (config.platform_favicon && config.platform_favicon.trim() !== '') {
+          setPlatformFavicon(config.platform_favicon);
+          const link = document.getElementById('dynamic-favicon');
+          if (link) {
+            link.href = config.platform_favicon;
+          }
+        } else if (config.platform_logo && config.platform_logo.trim() !== '') {
+          // Si no hay favicon pero hay logo, usar el logo como favicon
+          const link = document.getElementById('dynamic-favicon');
+          if (link) {
+            link.href = config.platform_logo;
+          }
+        }
+      } catch (err) {
+        console.error('Error loading platform config:', err);
+      }
+    };
+
+    if (user?.is_system_admin) {
+      loadPlatformConfig();
+    }
+  }, [user]);
+
   useEffect(() => {
     // If we have school data from login or fetch, apply branding
     const targetSchool = school || (user && user.school); // Assuming the login returns user.school
@@ -203,6 +256,111 @@ function App() {
   const handleLogout = () => {
     api.logout();
     setUser(null);
+  };
+
+  // Handlers para subir Logo y Favicon
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      setNotification({ type: 'error', message: 'Por favor sube un archivo de imagen válido' });
+      return;
+    }
+
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setNotification({ type: 'error', message: 'La imagen no debe superar los 5MB' });
+      return;
+    }
+
+    setUploadingLogo(true);
+
+    try {
+      // Convertir a base64 para enviar
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target.result;
+
+        // Enviar al backend
+        try {
+          await api.post('/admin/platform-settings', {
+            setting_key: 'platform_logo',
+            setting_value: base64
+          });
+
+          setPlatformLogo(base64);
+          setPlatformConfig(prev => ({ ...prev, platform_logo: base64 }));
+          setNotification({ type: 'success', message: 'Logo actualizado exitosamente' });
+
+          // Actualizar favicon dinámicamente (usar logo como favicon si no hay favicon)
+          const link = document.getElementById('dynamic-favicon');
+          if (link && !platformConfig?.platform_favicon) {
+            link.href = base64;
+          }
+        } catch (err) {
+          setNotification({ type: 'error', message: err.message || 'Error al guardar el logo' });
+        }
+
+        setUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setNotification({ type: 'error', message: 'Error al subir el logo' });
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleFaviconUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validar tipo de archivo (ico, png)
+    if (!file.type.match('image/.*') && !file.name.endsWith('.ico')) {
+      setNotification({ type: 'error', message: 'Por favor sube un archivo .ico o .png' });
+      return;
+    }
+
+    // Validar tamaño (max 1MB para favicon)
+    if (file.size > 1 * 1024 * 1024) {
+      setNotification({ type: 'error', message: 'El favicon no debe superar 1MB' });
+      return;
+    }
+
+    setUploadingFavicon(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target.result;
+
+        try {
+          await api.post('/admin/platform-settings', {
+            setting_key: 'platform_favicon',
+            setting_value: base64
+          });
+
+          setPlatformFavicon(base64);
+          setPlatformConfig(prev => ({ ...prev, platform_favicon: base64 }));
+          setNotification({ type: 'success', message: 'Favicon actualizado exitosamente' });
+
+          // Actualizar favicon dinámicamente
+          const link = document.getElementById('dynamic-favicon');
+          if (link) {
+            link.href = base64;
+          }
+        } catch (err) {
+          setNotification({ type: 'error', message: err.message || 'Error al guardar el favicon' });
+        }
+
+        setUploadingFavicon(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setNotification({ type: 'error', message: 'Error al subir el favicon' });
+      setUploadingFavicon(false);
+    }
   };
 
   const handleAction = async (method, endpoint, formData, successMessage) => {
@@ -998,6 +1156,204 @@ function App() {
         {/* Billing View */}
         {activeTab === 'billing' && user.role === 'admin' && (
           <Billing />
+        )}
+
+        {/* Settings View (Root) */}
+        {activeTab === 'settings' && user.is_system_admin && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5">
+            <div className="bg-gradient-to-r from-violet-600/20 via-indigo-600/20 to-cyan-600/20 border border-violet-500/30 rounded-3xl p-8 backdrop-blur-md">
+              <h2 className="text-3xl font-black mb-4">⚙️ Configuración de la Plataforma</h2>
+              <p className="text-blue-100/60">Gestiona la configuración global de SchoolCCB SaaS</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Branding - Logo y Favicon */}
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <h3 className="text-xl font-bold mb-4 flex items-center space-x-2">
+                  <span>🎨</span> <span>Logo y Favicon</span>
+                </h3>
+                <div className="space-y-6">
+                  {/* Logo Upload */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-blue-100/40 mb-2 block">
+                      Logo de la Plataforma
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      {platformLogo ? (
+                        <img src={platformLogo} alt="Logo" className="w-20 h-20 object-contain bg-white/5 rounded-xl p-2" />
+                      ) : (
+                        <div className="w-20 h-20 bg-white/5 rounded-xl flex items-center justify-center text-white/20">
+                          <span className="text-2xl">🖼️</span>
+                        </div>
+                      )}
+                      <label className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          disabled={uploadingLogo}
+                          className="hidden"
+                        />
+                        <div className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                          uploadingLogo ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-white/10 hover:border-cyan-500/50 hover:bg-white/5'
+                        }`}>
+                          {uploadingLogo ? (
+                            <p className="text-xs text-cyan-400">Subiendo...</p>
+                          ) : (
+                            <p className="text-xs text-blue-100/50">Click para subir logo</p>
+                          )}
+                          <p className="text-[10px] text-blue-100/30 mt-1">PNG, JPG (max 5MB)</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Favicon Upload */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-blue-100/40 mb-2 block">
+                      Favicon
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      {platformFavicon ? (
+                        <img src={platformFavicon} alt="Favicon" className="w-10 h-10 object-contain bg-white/5 rounded-lg p-1" />
+                      ) : (
+                        <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-white/20">
+                          <span className="text-lg">🔖</span>
+                        </div>
+                      )}
+                      <label className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*,.ico"
+                          onChange={handleFaviconUpload}
+                          disabled={uploadingFavicon}
+                          className="hidden"
+                        />
+                        <div className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                          uploadingFavicon ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-white/10 hover:border-cyan-500/50 hover:bg-white/5'
+                        }`}>
+                          {uploadingFavicon ? (
+                            <p className="text-xs text-cyan-400">Subiendo...</p>
+                          ) : (
+                            <p className="text-xs text-blue-100/50">Click para subir favicon</p>
+                          )}
+                          <p className="text-[10px] text-blue-100/30 mt-1">ICO, PNG (max 1MB)</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Platform Settings */}
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <h3 className="text-xl font-bold mb-4 flex items-center space-x-2">
+                  <span>🌐</span> <span>Configuración de Plataforma</span>
+                </h3>
+                <div className="space-y-4 text-sm">
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Nombre de la Plataforma</span>
+                    <span className="font-bold text-cyan-400">{PLATFORM_NAME || 'SchoolCCB'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Email de Soporte</span>
+                    <span className="font-bold">{PLATFORM_SUPPORT_EMAIL || 'soporte@schoolccb.com'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Email de Ventas</span>
+                    <span className="font-bold">{PLATFORM_SALES_EMAIL || 'ventas@schoolccb.com'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Settings */}
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <h3 className="text-xl font-bold mb-4 flex items-center space-x-2">
+                  <span>📧</span> <span>Configuración de Email</span>
+                </h3>
+                <div className="space-y-4 text-sm">
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">SMTP Habilitado</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${SMTP_ENABLED ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      {SMTP_ENABLED ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Host SMTP</span>
+                    <span className="font-mono text-cyan-400">{SMTP_HOST || 'No configurado'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Desde Email</span>
+                    <span className="font-bold">{SMTP_FROM_EMAIL || 'No configurado'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stripe Settings */}
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <h3 className="text-xl font-bold mb-4 flex items-center space-x-2">
+                  <span>💳</span> <span>Configuración de Pagos</span>
+                </h3>
+                <div className="space-y-4 text-sm">
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Stripe Habilitado</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${STRIPE_ENABLED ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                      {STRIPE_ENABLED ? 'Activo' : 'No configurado'}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                    <p className="text-blue-100/60 text-xs">
+                      ℹ️ Stripe permite procesar pagos con tarjeta de crédito para las suscripciones de los colegios.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Info */}
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <h3 className="text-xl font-bold mb-4 flex items-center space-x-2">
+                  <span>📊</span> <span>Información del Sistema</span>
+                </h3>
+                <div className="space-y-4 text-sm">
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Versión</span>
+                    <span className="font-mono text-cyan-400">v1.0.0</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Ambiente</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${NODE_ENV === 'production' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                      {NODE_ENV || 'development'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                    <span className="text-blue-100/50">Backend</span>
+                    <span className="font-mono text-cyan-400">Rust + Actix-web</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Coming Soon Features */}
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+              <h3 className="text-xl font-bold mb-4 flex items-center space-x-2">
+                <span>🚧</span> <span>Próximamente</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <p className="font-bold mb-2">📝 Audit Logs</p>
+                  <p className="text-xs text-blue-100/50">Registro detallado de todas las acciones del sistema</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <p className="font-bold mb-2">🔐 2FA</p>
+                  <p className="text-xs text-blue-100/50">Autenticación de dos factores para mayor seguridad</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <p className="font-bold mb-2">💾 Backups</p>
+                  <p className="text-xs text-blue-100/50">Copias de seguridad automáticas en la nube</p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
 

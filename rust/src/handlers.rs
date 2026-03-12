@@ -565,6 +565,74 @@ pub async fn create_country(
     }
 }
 
+#[derive(Deserialize)]
+pub struct PlatformSettingRequest {
+    pub setting_key: String,
+    pub setting_value: String,
+}
+
+/// Obtener configuración de plataforma
+#[get("/admin/platform-settings")]
+pub async fn get_platform_settings(repo: web::Data<Repository>, claims: Claims) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+
+    match repo.get_all_platform_settings().await {
+        Ok(settings) => {
+            // Convertir a HashMap para respuesta más limpia
+            let mut config = serde_json::Map::new();
+            for setting in settings {
+                let value = if setting.setting_type == "boolean" {
+                    serde_json::Value::Bool(setting.setting_value == "true")
+                } else {
+                    serde_json::Value::String(setting.setting_value)
+                };
+                config.insert(setting.setting_key, value);
+            }
+            HttpResponse::Ok().json(config)
+        }
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Actualizar configuración de plataforma
+#[post("/admin/platform-settings")]
+pub async fn update_platform_setting(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    body: web::Json<PlatformSettingRequest>,
+) -> HttpResponse {
+    if !claims.is_system_admin {
+        return HttpResponse::Forbidden().json(json!({"error": "Root access required"}));
+    }
+
+    // Determinar el tipo de configuración
+    let setting_type = if body.setting_key.contains("enabled") {
+        "boolean"
+    } else {
+        "string"
+    };
+
+    match repo
+        .upsert_platform_setting(&body.setting_key, &body.setting_value, setting_type)
+        .await
+    {
+        Ok(_) => {
+            info!(
+                user_id = %claims.sub,
+                key = %body.setting_key,
+                "Platform setting updated"
+            );
+            HttpResponse::Ok().json(json!({
+                "message": "Configuración actualizada exitosamente",
+                "setting_key": body.setting_key
+            }))
+        }
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
 #[post("/saas/schools")]
 pub async fn create_managed_school(
     repo: web::Data<Repository>,
@@ -686,6 +754,76 @@ pub async fn update_school(
         .await
     {
         Ok(school) => HttpResponse::Ok().json(school),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+// ============================================
+// Legal Representatives Handlers
+// ============================================
+
+#[derive(Deserialize)]
+pub struct CreateLegalRepresentativeRequest {
+    pub school_id: Uuid,
+    pub nombre_completo: String,
+    pub rut: String,
+    pub cargo: String,
+    pub email: Option<String>,
+    pub telefono: Option<String>,
+    pub direccion: Option<String>,
+    pub es_principal: Option<bool>,
+    pub fecha_nombramiento: Option<chrono::NaiveDate>,
+    pub poder_notarial: Option<String>,
+}
+
+/// Crear representante legal
+#[post("/saas/legal-representatives")]
+pub async fn create_legal_representative(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    body: web::Json<CreateLegalRepresentativeRequest>,
+) -> HttpResponse {
+    // Solo root o admin pueden crear representantes
+    if (claims.role != "admin" && claims.role != "root")
+        || (!claims
+            .permissions
+            .contains(&"saas:manage_schools".to_string())
+            && claims.role != "root")
+    {
+        return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    match repo
+        .create_legal_representative(
+            body.school_id,
+            &body.nombre_completo,
+            &body.rut,
+            &body.cargo,
+            body.email.as_deref(),
+            body.telefono.as_deref(),
+            body.direccion.as_deref(),
+            body.es_principal.unwrap_or(false),
+            body.fecha_nombramiento,
+            body.poder_notarial.as_deref(),
+        )
+        .await
+    {
+        Ok(representative) => HttpResponse::Ok().json(representative),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
+    }
+}
+
+/// Listar representantes de un colegio
+#[get("/saas/schools/{school_id}/legal-representatives")]
+pub async fn list_legal_representatives(
+    repo: web::Data<Repository>,
+    claims: Claims,
+    path: web::Path<Uuid>,
+) -> HttpResponse {
+    let school_id = path.into_inner();
+
+    match repo.list_legal_representatives(school_id).await {
+        Ok(representatives) => HttpResponse::Ok().json(representatives),
         Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
     }
 }

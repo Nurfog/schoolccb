@@ -9,6 +9,17 @@ use uuid::Uuid;
 // ============================================
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct PlatformSetting {
+    pub id: i32,
+    pub setting_key: String,
+    pub setting_value: String,
+    pub setting_type: String,
+    pub description: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct School {
     pub id: Uuid,
     pub name: String,
@@ -20,6 +31,35 @@ pub struct School {
     pub logo_url: Option<String>,
     pub primary_color: Option<String>,
     pub secondary_color: Option<String>,
+    // Campos adicionales de ubicación
+    pub address: Option<String>,
+    pub comuna: Option<String>,
+    pub provincia: Option<String>,
+    pub estado: Option<String>,
+    pub ciudad: Option<String>,
+    pub codigo_postal: Option<String>,
+    pub telefono: Option<String>,
+    pub email_contacto: Option<String>,
+    pub sitio_web: Option<String>,
+    pub rut: Option<String>,
+    pub razon_social: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct LegalRepresentative {
+    pub id: Uuid,
+    pub school_id: Uuid,
+    pub nombre_completo: String,
+    pub rut: String,
+    pub cargo: String,
+    pub email: Option<String>,
+    pub telefono: Option<String>,
+    pub direccion: Option<String>,
+    pub es_principal: bool,
+    pub fecha_nombramiento: Option<chrono::NaiveDate>,
+    pub poder_notarial: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]

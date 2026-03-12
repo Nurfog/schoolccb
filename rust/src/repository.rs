@@ -221,6 +221,102 @@ impl Repository {
         .await
     }
 
+    // Platform Settings
+    pub async fn get_platform_setting(&self, key: &str) -> Result<Option<String>, sqlx::Error> {
+        let result = sqlx::query_scalar::<_, String>(
+            "SELECT setting_value FROM platform_settings WHERE setting_key = $1"
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(result)
+    }
+
+    pub async fn upsert_platform_setting(
+        &self,
+        key: &str,
+        value: &str,
+        setting_type: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "INSERT INTO platform_settings (setting_key, setting_value, setting_type, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+             ON CONFLICT (setting_key) DO UPDATE SET
+                setting_value = EXCLUDED.setting_value,
+                updated_at = CURRENT_TIMESTAMP"
+        )
+        .bind(key)
+        .bind(value)
+        .bind(setting_type)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_all_platform_settings(&self) -> Result<Vec<crate::models::PlatformSetting>, sqlx::Error> {
+        sqlx::query_as::<_, crate::models::PlatformSetting>(
+            "SELECT * FROM platform_settings ORDER BY setting_key"
+        )
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    // Legal Representatives
+    pub async fn create_legal_representative(
+        &self,
+        school_id: Uuid,
+        nombre_completo: &str,
+        rut: &str,
+        cargo: &str,
+        email: Option<&str>,
+        telefono: Option<&str>,
+        direccion: Option<&str>,
+        es_principal: bool,
+        fecha_nombramiento: Option<chrono::NaiveDate>,
+        poder_notarial: Option<&str>,
+    ) -> Result<crate::models::LegalRepresentative, sqlx::Error> {
+        // Si es principal, marcar los otros como no principales
+        if es_principal {
+            sqlx::query(
+                "UPDATE legal_representatives SET es_principal = FALSE WHERE school_id = $1"
+            )
+            .bind(school_id)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        sqlx::query_as::<_, crate::models::LegalRepresentative>(
+            "INSERT INTO legal_representatives
+            (school_id, nombre_completo, rut, cargo, email, telefono, direccion, es_principal, fecha_nombramiento, poder_notarial)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *"
+        )
+        .bind(school_id)
+        .bind(nombre_completo)
+        .bind(rut)
+        .bind(cargo)
+        .bind(email)
+        .bind(telefono)
+        .bind(direccion)
+        .bind(es_principal)
+        .bind(fecha_nombramiento)
+        .bind(poder_notarial)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    pub async fn list_legal_representatives(
+        &self,
+        school_id: Uuid,
+    ) -> Result<Vec<crate::models::LegalRepresentative>, sqlx::Error> {
+        sqlx::query_as::<_, crate::models::LegalRepresentative>(
+            "SELECT * FROM legal_representatives WHERE school_id = $1 ORDER BY es_principal DESC, nombre_completo ASC"
+        )
+        .bind(school_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
     pub async fn get_root_dashboard_stats(
         &self,
     ) -> Result<crate::models::RootDashboardStats, sqlx::Error> {
