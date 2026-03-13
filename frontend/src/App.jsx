@@ -1,13 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from './api';
 import Login from './Login';
 import Modal from './Modal';
-import BulkImport from './BulkImport';
-import BrandingConfig from './BrandingConfig';
-import Billing from './Billing';
 import LanguageSwitcher from './LanguageSwitcher';
 import { CourseForm, TeacherForm, StudentForm, EnrollmentForm, GradeForm, AttendanceForm, SchoolForm, SchoolEditForm, LicenseForm } from './Forms';
+
+// Lazy loading para code splitting
+const BulkImport = lazy(() => import('./BulkImport'));
+const BrandingConfig = lazy(() => import('./BrandingConfig'));
+const Billing = lazy(() => import('./Billing'));
+
+// Loading fallback component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen bg-[#0a0f1e]">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-white/70 text-sm font-medium">Cargando...</p>
+    </div>
+  </div>
+);
 
 const SidebarItem = ({ icon, label, active, onClick }) => (
   <button
@@ -1133,29 +1145,35 @@ function App() {
         )}
         {/* Bulk Import View */}
         {activeTab === 'bulk_import' && user.role === 'admin' && (
-          <div className="max-w-2xl mx-auto py-10">
-            <BulkImport onComplete={() => {
-              // Optionally refresh data if needed
-            }} />
-          </div>
+          <Suspense fallback={<LoadingSpinner />}>
+            <div className="max-w-2xl mx-auto py-10">
+              <BulkImport onComplete={() => {
+                // Optionally refresh data if needed
+              }} />
+            </div>
+          </Suspense>
         )}
 
         {/* Branding View */}
         {activeTab === 'branding' && user.role === 'admin' && (
-          <div className="max-w-2xl mx-auto py-10">
-            <BrandingConfig
-              school={school}
-              onUpdate={(updated) => {
-                setSchool(updated);
-                api.saveSchool(updated);
-              }}
-            />
-          </div>
+          <Suspense fallback={<LoadingSpinner />}>
+            <div className="max-w-2xl mx-auto py-10">
+              <BrandingConfig
+                school={school}
+                onUpdate={(updated) => {
+                  setSchool(updated);
+                  api.saveSchool(updated);
+                }}
+              />
+            </div>
+          </Suspense>
         )}
 
         {/* Billing View */}
         {activeTab === 'billing' && user.role === 'admin' && (
-          <Billing />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Billing />
+          </Suspense>
         )}
 
         {/* Settings View (Root) */}

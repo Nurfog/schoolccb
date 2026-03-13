@@ -20,6 +20,61 @@ pub struct Claims {
     pub exp: usize,
 }
 
+/// Error types for password validation
+#[derive(Debug, Clone, PartialEq)]
+pub enum PasswordValidationError {
+    TooShort,
+    NoUppercase,
+    NoLowercase,
+    NoDigit,
+    NoSpecialChar,
+}
+
+impl std::fmt::Display for PasswordValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            PasswordValidationError::TooShort => write!(f, "Password must be at least 8 characters"),
+            PasswordValidationError::NoUppercase => write!(f, "Password must contain at least one uppercase letter"),
+            PasswordValidationError::NoLowercase => write!(f, "Password must contain at least one lowercase letter"),
+            PasswordValidationError::NoDigit => write!(f, "Password must contain at least one number"),
+            PasswordValidationError::NoSpecialChar => write!(f, "Password must contain at least one special character"),
+        }
+    }
+}
+
+/// Validate password strength
+/// Requirements:
+/// - At least 8 characters
+/// - At least one uppercase letter
+/// - At least one lowercase letter
+/// - At least one digit
+/// - At least one special character
+pub fn validate_password_strength(password: &str) -> Result<(), PasswordValidationError> {
+    if password.len() < 8 {
+        return Err(PasswordValidationError::TooShort);
+    }
+
+    let has_upper = password.chars().any(|c| c.is_uppercase());
+    let has_lower = password.chars().any(|c| c.is_lowercase());
+    let has_digit = password.chars().any(|c| c.is_numeric());
+    let has_special = password.chars().any(|c| !c.is_alphanumeric());
+
+    if !has_upper {
+        return Err(PasswordValidationError::NoUppercase);
+    }
+    if !has_lower {
+        return Err(PasswordValidationError::NoLowercase);
+    }
+    if !has_digit {
+        return Err(PasswordValidationError::NoDigit);
+    }
+    if !has_special {
+        return Err(PasswordValidationError::NoSpecialChar);
+    }
+
+    Ok(())
+}
+
 pub fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();

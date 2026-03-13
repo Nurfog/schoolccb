@@ -48,9 +48,9 @@ wait_for_service() {
     local service=$1
     local max_attempts=30
     local attempt=1
-    
+
     print_info "Esperando a que $service esté listo..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         if docker compose ps | grep -q "$service.*healthy"; then
             print_success "$service está listo"
@@ -58,9 +58,11 @@ wait_for_service() {
         fi
         sleep 2
         attempt=$((attempt + 1))
+        print_info "Intento $attempt/$max_attempts - esperando $service..."
     done
-    
-    print_warning "Timeout esperando $service, continuando..."
+
+    print_error "Timeout esperando $service después de $max_attempts intentos"
+    docker compose logs "$service" 2>/dev/null || true
     return 1
 }
 
@@ -180,12 +182,29 @@ fi
 # 7. Iniciar Servicios
 echo ""
 print_info "Iniciando servicios Docker..."
-docker compose up -d --build
+if ! docker compose up -d --build; then
+    print_error "Failed to start Docker services"
+    docker compose logs 2>/dev/null || true
+    exit 1
+fi
+
+print_success "Servicios Docker iniciados"
 
 # Esperar a que los servicios estén listos
 echo ""
-wait_for_service "db"
-wait_for_service "backend"
+if ! wait_for_service "db"; then
+    print_error "La base de datos no inició correctamente"
+    docker compose logs db 2>/dev/null || true
+    exit 1
+fi
+
+if ! wait_for_service "backend"; then
+    print_error "El backend no inició correctamente"
+    docker compose logs backend 2>/dev/null || true
+    exit 1
+fi
+
+print_success "Todos los servicios están listos"
 
 # 8. Crear Usuario Administrador
 echo ""

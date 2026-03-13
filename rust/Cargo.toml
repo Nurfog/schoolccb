@@ -2,6 +2,7 @@
 name = "colegio-backend"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.77"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -56,6 +57,7 @@ argon2 = "0.5"
 jsonwebtoken = "9"
 strum = "0.26"
 strum_macros = "0.26"
+validator = { version = "0.18", features = ["derive"] }
 
 # Redis (opcional, para caching)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }

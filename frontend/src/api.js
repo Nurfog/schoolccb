@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:8080';
+// API URL configurable por variables de entorno
+const API_URL = import.meta.env.VITE_API_URL || 
+                (import.meta.env.PROD ? 'http://localhost:8080' : 'http://localhost:8080');
 
 const api = {
     get: (endpoint) => request(endpoint, { method: 'GET' }),

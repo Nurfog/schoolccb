@@ -1,71 +1,54 @@
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{App, HttpServer, web};
+use colegio_backend::config::AppConfig;
 use colegio_backend::handlers;
 use colegio_backend::repository::Repository;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
-use std::env;
-use std::time::Duration;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
+    // Load and validate configuration from environment variables
+    let config = AppConfig::from_env().unwrap_or_else(|e| {
+        eprintln!("❌ Configuration error: {}", e);
+        std::process::exit(1);
+    });
+
+    // Validate configuration
+    if let Err(e) = config.validate() {
+        eprintln!("❌ Configuration validation failed: {}", e);
+        std::process::exit(1);
+    }
+
     // Initialize tracing subscriber with JSON formatting for production
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,sqlx=warn,actix_web=info".into()),
+                .unwrap_or_else(|_| config.rust_log.clone().into()),
         )
         .with(tracing_subscriber::fmt::layer().json())
         .init();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    
-    // Configure connection pool with production-ready settings
-    let max_connections = env::var("DATABASE_MAX_CONNECTIONS")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(20u32);
-    
-    let min_connections = env::var("DATABASE_MIN_CONNECTIONS")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(5u32);
-    
-    let acquire_timeout = env::var("DATABASE_ACQUIRE_TIMEOUT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(30u64);
-    
-    let idle_timeout = env::var("DATABASE_IDLE_TIMEOUT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(600u64);
-    
-    let max_lifetime = env::var("DATABASE_MAX_LIFETIME")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(1800u64);
-
     tracing::info!(
-        max_connections = max_connections,
-        min_connections = min_connections,
-        acquire_timeout = acquire_timeout,
-        idle_timeout = idle_timeout,
-        max_lifetime = max_lifetime,
+        max_connections = config.database_max_connections,
+        min_connections = config.database_min_connections,
+        acquire_timeout = config.database_acquire_timeout.as_secs(),
+        idle_timeout = config.database_idle_timeout.as_secs(),
+        max_lifetime = config.database_max_lifetime.as_secs(),
         "Configuring database connection pool"
     );
 
     let pool = PgPoolOptions::new()
-        .max_connections(max_connections)
-        .min_connections(min_connections)
-        .acquire_timeout(Duration::from_secs(acquire_timeout))
-        .idle_timeout(Duration::from_secs(idle_timeout))
-        .max_lifetime(Duration::from_secs(max_lifetime))
-        .connect(&database_url)
+        .max_connections(config.database_max_connections)
+        .min_connections(config.database_min_connections)
+        .acquire_timeout(config.database_acquire_timeout)
+        .idle_timeout(config.database_idle_timeout)
+        .max_lifetime(config.database_max_lifetime)
+        .connect(&config.database_url)
         .await
         .expect("Failed to create pool");
 
@@ -81,15 +64,9 @@ async fn main() -> std::io::Result<()> {
 
     let repo = Repository::new(pool.clone());
 
-    let port = env::var("PORT")
-        .or_else(|_| env::var("RUST_API_PORT"))
-        .unwrap_or_else(|_| "8080".to_string());
-    let bind_addr = format!("0.0.0.0:{}", port);
+    let bind_addr = format!("{}:{}", config.host, config.port);
 
     tracing::info!(address = %bind_addr, "Starting server");
-
-    let origins = env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost".to_string());
-    let allowed_origins: Vec<String> = origins.split(',').map(|s| s.to_string()).collect();
 
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -102,7 +79,7 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials()
             .max_age(3600);
 
-        for origin in &allowed_origins {
+        for origin in &config.cors_origins {
             cors = cors.allowed_origin(origin);
         }
 

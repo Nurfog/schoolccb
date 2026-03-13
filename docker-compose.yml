@@ -93,6 +93,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-changeme_secure_key_2024}
       # Redis (opcional)
       REDIS_URL: redis://redis:6379
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
@@ -102,10 +104,10 @@ services:
       - colleges_network
       - db_internal
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
       interval: 30s
       retries: 3
-      start_period: 40s
+      start_period: 60s
       timeout: 10s
     deploy:
       resources:

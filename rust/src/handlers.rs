@@ -12,73 +12,99 @@ use sqlx::{Pool, Postgres};
 use std::io::Cursor;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
+use validator::Validate;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct LoginRequest {
+    #[validate(email)]
     pub email: String,
+    #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct RegisterRequest {
     pub school_id: Uuid,
     pub role_id: i32,
+    #[validate(length(min = 2, max = 100, message = "Name must be between 2 and 100 characters"))]
     pub name: String,
+    #[validate(email)]
     pub email: String,
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreateCourseRequest {
+    #[validate(length(min = 2, max = 100, message = "Course name must be between 2 and 100 characters"))]
     pub name: String,
+    #[validate(length(max = 500))]
     pub description: Option<String>,
     pub teacher_id: Option<Uuid>,
+    #[validate(length(max = 50))]
     pub grade_level: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreateTeacherRequest {
+    #[validate(length(min = 2, max = 100))]
     pub name: String,
+    #[validate(email)]
     pub email: String,
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
+    #[validate(length(max = 500))]
     pub bio: Option<String>,
+    #[validate(length(max = 100))]
     pub specialty: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreateStudentRequest {
+    #[validate(length(min = 2, max = 100))]
     pub name: String,
+    #[validate(email)]
     pub email: String,
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
+    #[validate(length(max = 50))]
     pub enrollment_number: Option<String>,
     pub parent_id: Option<Uuid>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct UpdateSchoolRequest {
+    #[validate(length(min = 2, max = 150))]
     pub name: String,
+    #[validate(length(min = 2, max = 50))]
     pub subdomain: String,
     pub country_id: Option<i32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct UpdateBrandingRequest {
+    #[validate(url)]
     pub logo_url: Option<String>,
+    #[validate(length(min = 7, max = 7))]
     pub primary_color: Option<String>,
+    #[validate(length(min = 7, max = 7))]
     pub secondary_color: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct UpsertLicenseRequest {
     pub school_id: Uuid,
+    #[validate(length(min = 3, max = 20))]
     pub plan_type: String,
+    #[validate(length(min = 3, max = 20))]
     pub status: String,
     pub expiry_date: chrono::DateTime<chrono::Utc>,
     pub auto_renew: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct AssignLicenseRequest {
+    #[validate(length(min = 3, max = 20))]
     pub plan_type: String,
     pub expiry_date: chrono::DateTime<chrono::Utc>,
     pub auto_renew: Option<bool>,
@@ -135,6 +161,13 @@ pub async fn assign_license(
 
 #[post("/auth/login")]
 pub async fn login(repo: web::Data<Repository>, body: web::Json<LoginRequest>) -> HttpResponse {
+    // Validate input
+    if let Err(e) = body.validate() {
+        let errors = e.to_string();
+        warn!(validation_errors = %errors, "Login validation failed");
+        return HttpResponse::BadRequest().json(json!({"error": "Validación fallida", "details": errors}));
+    }
+
     let user_role = repo.get_user_with_role(&body.email).await;
 
     match user_role {
@@ -192,6 +225,13 @@ pub async fn register(
 ) -> HttpResponse {
     use crate::auth::hash_password;
 
+    // Validate input
+    if let Err(e) = body.validate() {
+        let errors = e.to_string();
+        warn!(validation_errors = %errors, "Register validation failed");
+        return HttpResponse::BadRequest().json(json!({"error": "Validación fallida", "details": errors}));
+    }
+
     let password_hash = hash_password(&body.password);
 
     let user_result: Result<User, sqlx::Error> = repo
@@ -243,6 +283,13 @@ pub async fn create_course(
         return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
     }
 
+    // Validate input
+    if let Err(e) = body.validate() {
+        let errors = e.to_string();
+        warn!(validation_errors = %errors, "Create course validation failed");
+        return HttpResponse::BadRequest().json(json!({"error": "Validación fallida", "details": errors}));
+    }
+
     let school_id = Uuid::parse_str(&claims.school_id).unwrap_or_default();
     match repo
         .create_course(
@@ -288,6 +335,13 @@ pub async fn create_teacher(
         return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
     }
 
+    // Validate input
+    if let Err(e) = body.validate() {
+        let errors = e.to_string();
+        warn!(validation_errors = %errors, "Create teacher validation failed");
+        return HttpResponse::BadRequest().json(json!({"error": "Validación fallida", "details": errors}));
+    }
+
     use crate::auth::hash_password;
     let password_hash = hash_password(&body.password);
     let school_id = Uuid::parse_str(&claims.school_id).unwrap_or_default();
@@ -317,6 +371,13 @@ pub async fn create_student(
     // RBAC: Solo admin o profesor pueden registrar alumnos (depende de política)
     if claims.role != "admin" && claims.role != "profesor" {
         return HttpResponse::Forbidden().json(json!({"error": "Insufficient permissions"}));
+    }
+
+    // Validate input
+    if let Err(e) = body.validate() {
+        let errors = e.to_string();
+        warn!(validation_errors = %errors, "Create student validation failed");
+        return HttpResponse::BadRequest().json(json!({"error": "Validación fallida", "details": errors}));
     }
 
     use crate::auth::hash_password;
