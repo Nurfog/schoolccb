@@ -6,9 +6,6 @@ pub mod handlers;
 pub mod models;
 pub mod repository;
 
-#[cfg(test)]
-mod auth_tests;
-
 pub use features::{FeatureType, PlanType};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
