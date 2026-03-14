@@ -17,6 +17,7 @@ pub struct Claims {
     pub is_system_admin: bool,
     pub role: String,
     pub permissions: Vec<String>,
+    pub email: String, // Agregado para 2FA
     pub exp: usize,
 }
 
@@ -33,11 +34,21 @@ pub enum PasswordValidationError {
 impl std::fmt::Display for PasswordValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            PasswordValidationError::TooShort => write!(f, "Password must be at least 8 characters"),
-            PasswordValidationError::NoUppercase => write!(f, "Password must contain at least one uppercase letter"),
-            PasswordValidationError::NoLowercase => write!(f, "Password must contain at least one lowercase letter"),
-            PasswordValidationError::NoDigit => write!(f, "Password must contain at least one number"),
-            PasswordValidationError::NoSpecialChar => write!(f, "Password must contain at least one special character"),
+            PasswordValidationError::TooShort => {
+                write!(f, "Password must be at least 8 characters")
+            }
+            PasswordValidationError::NoUppercase => {
+                write!(f, "Password must contain at least one uppercase letter")
+            }
+            PasswordValidationError::NoLowercase => {
+                write!(f, "Password must contain at least one lowercase letter")
+            }
+            PasswordValidationError::NoDigit => {
+                write!(f, "Password must contain at least one number")
+            }
+            PasswordValidationError::NoSpecialChar => {
+                write!(f, "Password must contain at least one special character")
+            }
         }
     }
 }
@@ -97,6 +108,7 @@ pub fn create_jwt(
     is_system_admin: bool,
     role: &str,
     permissions: Vec<String>,
+    email: &str,
 ) -> Result<String, jsonwebtoken::errors::Error> {
     let expiration = Utc::now()
         .checked_add_signed(Duration::days(7))
@@ -109,6 +121,7 @@ pub fn create_jwt(
         is_system_admin,
         role: role.to_string(),
         permissions,
+        email: email.to_string(),
         exp: expiration as usize,
     };
 
@@ -229,8 +242,15 @@ mod tests {
         let permissions = vec!["users:read".to_string(), "users:write".to_string()];
 
         // Crear JWT
-        let token = create_jwt(user_id, school_id, is_system_admin, role, permissions.clone())
-            .expect("Failed to create JWT");
+        let token = create_jwt(
+            user_id,
+            school_id,
+            is_system_admin,
+            role,
+            permissions.clone(),
+            "test@example.com",
+        )
+        .expect("Failed to create JWT");
 
         // El token no debe estar vacío
         assert!(!token.is_empty());
@@ -258,8 +278,15 @@ mod tests {
         // Este test verifica que el token tenga expiración
         let user_id = Uuid::new_v4();
         let school_id = Uuid::new_v4();
-        let token = create_jwt(user_id, school_id, false, "user", vec![])
-            .expect("Failed to create JWT");
+        let token = create_jwt(
+            user_id,
+            school_id,
+            false,
+            "user",
+            vec![],
+            "test@example.com",
+        )
+        .expect("Failed to create JWT");
 
         let claims = decode_jwt(&token).expect("Failed to decode JWT");
 

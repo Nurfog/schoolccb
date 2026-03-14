@@ -5,6 +5,8 @@ import Login from './Login';
 import Modal from './Modal';
 import LanguageSwitcher from './LanguageSwitcher';
 import { CourseForm, TeacherForm, StudentForm, EnrollmentForm, GradeForm, AttendanceForm, SchoolForm, SchoolEditForm, LicenseForm } from './Forms';
+import { NotificationBell, NotificationsList } from './components/Notifications';
+import { AnnouncementsList, CreateAnnouncement } from './components/Announcements';
 
 // Lazy loading para code splitting
 const BulkImport = lazy(() => import('./BulkImport'));
@@ -60,6 +62,10 @@ function App() {
   const [school, setSchool] = useState(api.getSchool());
   const [modalOpen, setModalOpen] = useState(false);
   const [newCountry, setNewCountry] = useState({ name: '', code: '' });
+
+  // Estado para notificaciones
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
 
   // Variables de entorno (para la vista de configuración)
   const PLATFORM_NAME = 'SchoolCCB';
@@ -542,7 +548,21 @@ function App() {
                     : 'Sección administrativa del colegio central Bogotá.'}
             </p>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex items-center space-x-4">
+            {/* Campana de notificaciones */}
+            <NotificationBell onNotificationClick={() => setNotificationsOpen(true)} />
+
+            {/* Botón de comunicados */}
+            {!user.is_system_admin && (
+              <button
+                onClick={() => setAnnouncementsOpen(true)}
+                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium text-white transition-all flex items-center space-x-2"
+              >
+                <span className="text-xl">📢</span>
+                <span>Comunicados</span>
+              </button>
+            )}
+
             {activeTab === 'course_members' && (
               <button
                 onClick={() => setViewingGrades(!viewingGrades)}
@@ -1463,6 +1483,33 @@ function App() {
           </button>
         </div>
       </Modal>
+
+      {/* Modal de Notificaciones */}
+      <NotificationsList isOpen={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+
+      {/* Modal de Comunicados */}
+      {announcementsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setAnnouncementsOpen(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-5xl bg-[#0f172a] border border-white/10 rounded-3xl overflow-hidden max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h2 className="text-2xl font-bold text-white">📢 Comunicados Escolares</h2>
+              <button
+                onClick={() => setAnnouncementsOpen(false)}
+                className="p-2 text-white/50 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AnnouncementsList />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

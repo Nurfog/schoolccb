@@ -30,6 +30,30 @@ Tú gestionas **TODOS los colegios y licencias** desde la consola root.
 
 ---
 
+## 📢 Actualización Marzo 2026 - Módulo de Comunicación
+
+**Importante:** El módulo de **Comunicación y Notificaciones** ahora es parte del **sistema BASE** para todos los planes.
+
+### ¿Qué incluye para TODOS los planes?
+
+| Feature | Basic | Premium | Enterprise |
+|---------|-------|---------|------------|
+| Notificaciones in-app | ✅ | ✅ | ✅ |
+| Emails transaccionales (SMTP) | ✅ | ✅ | ✅ |
+| Portal para Padres | ✅ | ✅ | ✅ |
+| Comunicados escolares | ✅ | ✅ | ✅ |
+| Preferencias de notificación | ✅ | ✅ | ✅ |
+| Plantillas básicas | ✅ | ✅ | ✅ |
+| **Integración con servicios externos** | | | |
+| SendGrid / AWS SES | 🔌 Configurable | 🔌 Configurable | 🔌 Configurable |
+| Firebase FCM (Push) | 🔌 Configurable | 🔌 Configurable | 🔌 Configurable |
+| Twilio (SMS) | 🔌 Configurable | 🔌 Configurable | 🔌 Configurable |
+| S3 / MinIO (adjuntos) | 🔌 Configurable | 🔌 Configurable | 🔌 Configurable |
+
+**Nota:** La infraestructura está incluida. El colegio proporciona las credenciales de los servicios externos y asume los costos directos de dichos servicios.
+
+---
+
 ## 💰 Planes Disponibles (Para Colegios)
 
 ### Plan Basic - $49 USD/mes
@@ -40,14 +64,14 @@ Tú gestionas **TODOS los colegios y licencias** desde la consola root.
 - ✅ Reportes Básicos (notas y asistencia)
 - ✅ Importación Masiva CSV
 - ✅ Personalización de Marca (logo y colores)
+- ✅ **Módulo de Comunicación** (notificaciones in-app, emails, portal padres)
 - ✅ Hasta 50 usuarios
 - ✅ Hasta 500 estudiantes
 
 **No incluye:**
 - ❌ Módulo financiero
 - ❌ Generación de PDFs oficiales
-- ❌ Notificaciones por email
-- ❌ Portal para padres
+- ❌ Analítica avanzada
 
 ---
 
@@ -57,8 +81,8 @@ Tú gestionas **TODOS los colegios y licencias** desde la consola root.
 **Todo lo del plan Basic, más:**
 - ✅ Módulo Financiero (pagos, pensiones, morosidad)
 - ✅ Generación de PDFs (boletines, certificados)
-- ✅ Notificaciones por Email
-- ✅ Portal para Padres
+- ✅ Plantillas de email personalizables
+- ✅ Portal para Padres avanzado (justificaciones online)
 - ✅ Hasta 200 usuarios
 - ✅ Hasta 2,000 estudiantes
 
@@ -68,8 +92,6 @@ Tú gestionas **TODOS los colegios y licencias** desde la consola root.
 **Solución completa para instituciones grandes y redes educativas.**
 
 **Todo lo del plan Premium, más:**
-- ✅ Notificaciones SMS
-- ✅ Push Notifications (app móvil)
 - ✅ Analítica Avanzada y BI
 - ✅ API Access completo
 - ✅ Audit Logs (cumplimiento)

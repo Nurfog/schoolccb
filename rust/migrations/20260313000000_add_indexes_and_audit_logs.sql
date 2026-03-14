@@ -97,6 +97,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_id ON audit_logs(entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_ip ON audit_logs(ip_address);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_action ON audit_logs(user_id, action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_action ON audit_logs(entity, action);
 
 -- Comentario de la tabla
 COMMENT ON TABLE audit_logs IS 'Registro de auditoría para acciones críticas del sistema';

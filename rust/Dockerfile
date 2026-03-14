@@ -3,8 +3,8 @@
 # ============================================
 
 # Etapa 1: Construcción
-# Usamos Rust 1.77 que coincide con rust-version en Cargo.toml
-FROM rust:1.77-bookworm as builder
+# Usamos Rust 1.88 que soporta todas las dependencias modernas
+FROM rust:1.88-bookworm AS builder
 WORKDIR /app/backend
 
 # Instalar dependencias necesarias para la compilación

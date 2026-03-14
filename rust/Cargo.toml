@@ -2,7 +2,6 @@
 name = "colegio-backend"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.77"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,6 +9,7 @@ rust-version = "1.77"
 # Web framework
 actix-web = "4"
 actix-cors = "0.7"
+actix-web-actors = "4"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -31,9 +31,6 @@ rust_decimal = { version = "1", features = ["serde-float"] }
 
 # HTTP client
 reqwest = { version = "0.12", features = ["json"] }
-
-# Stripe (opcional - para producción)
-# stripe = { version = "0.22", optional = true }
 
 # Environment
 dotenvy = "0.15"
@@ -58,9 +55,14 @@ jsonwebtoken = "9"
 strum = "0.26"
 strum_macros = "0.26"
 validator = { version = "0.18", features = ["derive"] }
+base32 = "0.4"
+rand = "0.8"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+# NOTA: Para PDFs en producción, agregar:
+# printpdf = "0.6"  o  lopdf = "0.32"
 
-# Redis (opcional, para caching)
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
+# Redis (para caching y colas de notificaciones)
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 
 [dev-dependencies]
 actix-rt = "2"
@@ -68,7 +70,6 @@ tokio-test = "0.4"
 
 [features]
 default = []
-redis-cache = ["redis"]
 
 [profile.release]
 opt-level = 3
